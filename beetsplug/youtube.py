@@ -3,6 +3,7 @@ Adds Youtube support to the autotagger.
 """
 
 import collections
+import os
 import re
 import time
 from io import BytesIO
