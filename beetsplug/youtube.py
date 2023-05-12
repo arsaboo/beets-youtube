@@ -78,13 +78,14 @@ class YouTubePlugin(BeetsPlugin):
         except Exception as e:
             self._log.debug('Invalid Search Error: {}'.format(e))
         for album in data:
-            print('Found album: {} with browseID: {}', album['title'],
-                  album['browseId'])
+            self._log.debug('Found album: {} with browseID: {}',
+                            album['title'], album['browseId'])
             id = album['browseId']
             album_details = self.yt.get_album(id)
             album_details.browseId = id
             album_info = self.get_album_info(album_details, album["type"])
             albums.append(album_info)
+            self._log.debug('returned album: {}', album_info)
         return albums
 
     def get_tracks(self, query):
@@ -140,8 +141,11 @@ class YouTubePlugin(BeetsPlugin):
         """Returns an AlbumInfo object for a YouTube album.
         """
         album = item["title"].replace("&quot;", "\"")
+        self._log.debug('album: {}', album)
         type = item["type"]
+        self._log.debug('type: {}', type)
         yt_album_id = item["browseId"]
+        self._log.debug('yt_album_id: {}', yt_album_id)
         artist_id = item['artists'][1].get('id', '')
         year = item["year"]
         url = item['thumbnails'][-1]['url']
