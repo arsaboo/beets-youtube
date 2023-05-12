@@ -84,6 +84,8 @@ class YouTubePlugin(BeetsPlugin):
                 continue
             try:
                 views = self.get_yt_views(item.yt_track_id)
+                self._log.debug('YouTube videoId: {} has {} views',
+                                item.yt_track_id, views)
             except:
                 self._log.debug('Invalid YouTube videoId: {}',
                                 item.yt_track_id)
