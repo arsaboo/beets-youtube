@@ -75,6 +75,7 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug('Searching Youtube for: {}', query)
         try:
             data = self.yt.search(query, 'albums', limit=5)
+            self._log.debug('{} albums found', len(data))
         except Exception as e:
             self._log.debug('Invalid Search Error: {}'.format(e))
         for album in data:
