@@ -35,7 +35,7 @@ class YouTubePlugin(BeetsPlugin):
         self.config.add({
             'source_weight': 0.5,
         })
-        #self.config_dir = config.config_dir()
+        self.yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
 
     def album_distance(self, items, album_info, mapping):
 
@@ -57,7 +57,7 @@ class YouTubePlugin(BeetsPlugin):
             config=self.config
         )
 
-    yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
+    #yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
     # yt = YTMusic('oauth.json')
 
     def get_albums(self, query):
