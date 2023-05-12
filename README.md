@@ -19,3 +19,5 @@ Add `YouTube` to your list of enabled plugins.
 ```yaml
 plugins: youtube
 ```
+
+This plugin relies on OAuth authentication as detailed [here](https://ytmusicapi.readthedocs.io/en/stable/setup/oauth.html) and expects the oauth.json file in the beets config folder. The easiest way to make it work is to generate the oauth.json outside the plugin and just paste the json file in the beets folder.
