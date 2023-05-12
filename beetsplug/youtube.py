@@ -143,7 +143,7 @@ class YouTubePlugin(BeetsPlugin):
         for track in data:
             id = track["videoId"]
             song_details = self.yt.get_song(id)
-            song_info = self._get_track(song_details)
+            song_info = self._get_track(song_details['videoDetails'])
             tracks.append(song_info)
         return tracks
 
@@ -214,7 +214,7 @@ class YouTubePlugin(BeetsPlugin):
     def _get_track(self, track_data):
         """Convert a Youtube song object to a TrackInfo object.
         """
-        track_data = track_data['videoDetails']
+        self._log.debug('track_data: {}', track_data)
         id = track_data.get('videoId', '')
         self._log.debug('id: {}', id)
         views = self.get_yt_views(id)
