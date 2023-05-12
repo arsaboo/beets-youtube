@@ -83,7 +83,7 @@ class YouTubePlugin(BeetsPlugin):
             id = album['browseId']
             album_details = self.yt.get_album(id)
             # add browseID to album_details
-            #album_details.browseId = id
+            album_details['browseId'] = id
             album_info = self.get_album_info(album_details, id)
             albums.append(album_info)
             self._log.debug('returned album: {}', album_info)
@@ -146,7 +146,7 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug('album: {}', album)
         type = item["type"]
         self._log.debug('type: {}', type)
-        yt_album_id = browseID
+        yt_album_id = item["browseID"]
         self._log.debug('yt_album_id: {}', yt_album_id)
         artist_id = item['artists'][1].get('id', '')
         year = item["year"]
