@@ -81,10 +81,10 @@ class YouTubePlugin(BeetsPlugin):
             self._log.debug('Found album: {} with browseID: {}',
                             album['title'], album['browseId'])
             id = album['browseId']
-            self._log.debug('Getting album details for: {}', id)
             album_details = self.yt.get_album(id)
+            # add browseID to album_details
             album_details.browseId = id
-            album_info = self.get_album_info(album_details, album["type"])
+            album_info = self.get_album_info(album_details)
             albums.append(album_info)
             self._log.debug('returned album: {}', album_info)
         return albums
