@@ -8,12 +8,13 @@ import time
 from io import BytesIO
 
 import requests
+from beets import config
 from beets.autotag.hooks import AlbumInfo, Distance, TrackInfo
 from beets.dbcore import types
 from beets.library import DateType
 from beets.plugins import BeetsPlugin, get_distance
-from ytmusicapi import YTMusic
 from PIL import Image
+from ytmusicapi import YTMusic
 
 
 class YouTubePlugin(BeetsPlugin):
@@ -33,6 +34,7 @@ class YouTubePlugin(BeetsPlugin):
         self.config.add({
             'source_weight': 0.5,
         })
+        self.config_dir = config.config_dir()
 
     def album_distance(self, items, album_info, mapping):
 
@@ -54,7 +56,8 @@ class YouTubePlugin(BeetsPlugin):
             config=self.config
         )
 
-    yt = YTMusic('oauth.json')
+    yt = YTMusic(os.path.join(self.config_dir, 'oauth.json'))
+    # yt = YTMusic('oauth.json')
 
     def get_albums(self, query):
         """Returns a list of AlbumInfo objects for a Youtube search query.
