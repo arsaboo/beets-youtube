@@ -83,8 +83,8 @@ class YouTubePlugin(BeetsPlugin):
             id = album['browseId']
             album_details = self.yt.get_album(id)
             # add browseID to album_details
-            album_details.browseId = id
-            album_info = self.get_album_info(album_details)
+            #album_details.browseId = id
+            album_info = self.get_album_info(album_details, id)
             albums.append(album_info)
             self._log.debug('returned album: {}', album_info)
         return albums
@@ -138,7 +138,7 @@ class YouTubePlugin(BeetsPlugin):
             self._log.debug('YouTube Search Error: {}'.format(e))
             return []
 
-    def get_album_info(self, item):
+    def get_album_info(self, item, browseID):
         """Returns an AlbumInfo object for a YouTube album.
         """
         self._log.debug('item: {}', item)
@@ -146,7 +146,7 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug('album: {}', album)
         type = item["type"]
         self._log.debug('type: {}', type)
-        yt_album_id = item["browseId"]
+        yt_album_id = browseID
         self._log.debug('yt_album_id: {}', yt_album_id)
         artist_id = item['artists'][1].get('id', '')
         year = item["year"]
