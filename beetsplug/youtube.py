@@ -216,9 +216,10 @@ class YouTubePlugin(BeetsPlugin):
         """
         id = track_data.get('videoId', '')
         views = self.get_yt_views(id)
+        title = track_data.get('title').replace("&quot;", "\"")
         # Get track information for YouTube tracks
         return TrackInfo(
-            title=track_data.get('title').replace("&quot;", "\""),
+            title=title,
             track_id=id,
             yt_track_id=id,
             artist=track_data.get('artists', '')[0].get('name', ''),
