@@ -141,6 +141,7 @@ class YouTubePlugin(BeetsPlugin):
     def get_album_info(self, item):
         """Returns an AlbumInfo object for a YouTube album.
         """
+        self._log.debug('item: {}', item)
         album = item["title"].replace("&quot;", "\"")
         self._log.debug('album: {}', album)
         type = item["type"]
