@@ -72,7 +72,7 @@ class YouTubePlugin(BeetsPlugin):
         # can also negate an otherwise positive result.
         query = re.sub(r'(?i)\b(CD|disc)\s*\d+', '', query)
         albums = []
-        self._log.debug('Searching Youtube for: {}', query)
+        self._log.debug('Searching Youtube for album: {}', query)
         try:
             data = self.yt.search(query, 'albums', limit=5)
         except Exception as e:
@@ -82,11 +82,8 @@ class YouTubePlugin(BeetsPlugin):
                             album['title'], album['browseId'])
             id = album['browseId']
             album_details = self.yt.get_album(id)
-            # add browseID to album_details
-            album_details['browseId'] = id
             album_info = self.get_album_info(album_details, id)
             albums.append(album_info)
-            self._log.debug('returned album: {}', album_info)
         return albums
 
     def get_tracks(self, query):
@@ -101,7 +98,7 @@ class YouTubePlugin(BeetsPlugin):
         # can also negate an otherwise positive result.
         query = re.sub(r'(?i)\b(CD|disc)\s*\d+', '', query)
         tracks = []
-        self._log.debug('Searching YouTube for: {}', query)
+        self._log.debug('Searching YouTube for track: {}', query)
         try:
             data = self.yt.search(query, 'songs', limit=5)
         except Exception as e:
@@ -144,8 +141,7 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug('item: {}', item)
         album = item["title"].replace("&quot;", "\"")
         type = item["type"]
-        #yt_album_id = browseID
-        yt_album_id = item["browseID"]
+        yt_album_id = browseID
         artist_id = item['artists'][0].get('id', '')
         year = item["year"]
         url = item['thumbnails'][-1]['url']
