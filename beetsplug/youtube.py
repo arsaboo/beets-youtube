@@ -244,7 +244,7 @@ class YouTubePlugin(BeetsPlugin):
         """
         self._log.debug('Searching for track {0}', track_id)
         song_details = self.yt.get_song(track_id)
-        return self._get_track(song_details)
+        return self._get_track(song_details['videoDetails'])
 
     def is_valid_image_url(self, url):
         try:
