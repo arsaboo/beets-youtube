@@ -76,8 +76,6 @@ class YouTubePlugin(BeetsPlugin):
         for index, item in enumerate(items, start=1):
             self._log.info('Processing {}/{} tracks - {} ',
                            index, len(items), item)
-            # If we're not forcing re-downloading for all tracks, check
-            # whether the popularity data is already present
             if item.yt_track_id is None:
                 self._log.debug('YouTube videoId not found for : {}',
                                 item)
@@ -145,7 +143,7 @@ class YouTubePlugin(BeetsPlugin):
         for track in data:
             id = track["videoId"]
             song_details = self.yt.get_song(id)
-            song_info = self._get_track(song_details)
+            song_info = self._get_track(song_details['videoDetails'])
             tracks.append(song_info)
         return tracks
 
@@ -216,7 +214,9 @@ class YouTubePlugin(BeetsPlugin):
     def _get_track(self, track_data):
         """Convert a Youtube song object to a TrackInfo object.
         """
+        self._log.debug('track_data: {}', track_data)
         id = track_data.get('videoId', '')
+        self._log.debug('id: {}', id)
         views = self.get_yt_views(id)
         # Get track information for YouTube tracks
         return TrackInfo(
@@ -232,6 +232,7 @@ class YouTubePlugin(BeetsPlugin):
             yt_updated=time.time(),
         )
 
+
     def album_for_id(self, browseId):
         """Fetches an album by its YouTube browseID and returns an AlbumInfo object
         """
@@ -239,12 +240,12 @@ class YouTubePlugin(BeetsPlugin):
         album_details = self.yt.get_album(browseId)
         return self.get_album_info(album_details, 'album')
 
-    def track_for_id(self, track_id=None):
-        """Fetches a track by its YouTube ID and returns a TrackInfo object
-        """
-        self._log.debug('Searching for track {0}', track_id)
-        song_details = self.yt.get_song(track_id)
-        return self._get_track(song_details)
+    # def track_for_id(self, track_id=None):
+    #     """Fetches a track by its YouTube ID and returns a TrackInfo object
+    #     """
+    #     self._log.debug('Searching for track {0}', track_id)
+    #     song_details = self.yt.get_song(track_id)
+    #     return self._get_track(song_details['videoDetails'])
 
     def is_valid_image_url(self, url):
         try:
