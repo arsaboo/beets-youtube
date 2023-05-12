@@ -9,7 +9,7 @@ import time
 from io import BytesIO
 
 import requests
-from beets import config
+from beets import config, ui
 from beets.autotag.hooks import AlbumInfo, Distance, TrackInfo
 from beets.dbcore import types
 from beets.library import DateType
@@ -35,7 +35,7 @@ class YouTubePlugin(BeetsPlugin):
         self.config.add({
             'source_weight': 0.5,
         })
-        #self.config_dir = config.config_dir()
+        self.yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
 
     def album_distance(self, items, album_info, mapping):
 
@@ -57,7 +57,46 @@ class YouTubePlugin(BeetsPlugin):
             config=self.config
         )
 
-    yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
+
+    def commands(self):
+        """Add beet UI commands to interact with Youtube."""
+        ytupdate_cmd = ui.Subcommand(
+            'ytupdate', help=f'Update {self.data_source} views')
+
+        def func(lib, opts, args):
+            items = lib.items(ui.decargs(args))
+            self._ytupdate(items, ui.should_write())
+
+        ytupdate_cmd.func = func
+
+        return [ytupdate_cmd]
+
+    def _ytupdate(self, items, write):
+        """Obtain view count from Youtube."""
+        for index, item in enumerate(items, start=1):
+            self._log.info('Processing {}/{} tracks - {} ',
+                           index, len(items), item)
+            # If we're not forcing re-downloading for all tracks, check
+            # whether the popularity data is already present
+            if item.yt_track_id is None:
+                self._log.debug('YouTube videoId not found for : {}',
+                                item)
+                continue
+            try:
+                views = self.get_yt_views(item.yt_track_id)
+                self._log.debug('YouTube videoId: {} has {} views',
+                                item.yt_track_id, views)
+            except:
+                self._log.debug('Invalid YouTube videoId: {}',
+                                item.yt_track_id)
+                continue
+            item.yt_views = views
+            item.yt_updated = time.time()
+            item.store()
+            if write:
+                item.try_write()
+
+    #yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
     # yt = YTMusic('oauth.json')
 
     def get_albums(self, query):
