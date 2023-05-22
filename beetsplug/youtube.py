@@ -76,9 +76,10 @@ class YouTubePlugin(BeetsPlugin):
         for index, item in enumerate(items, start=1):
             self._log.info('Processing {}/{} tracks - {} ',
                            index, len(items), item)
-            if item.yt_track_id is None:
-                self._log.debug('YouTube videoId not found for : {}',
-                                item)
+            try:
+                yt_track_id = item.yt_track_id
+            except AttributeError:
+                self._log.debug('No yt_track_id present for: {}', item)
                 continue
             try:
                 views = self.get_yt_views(item.yt_track_id)
