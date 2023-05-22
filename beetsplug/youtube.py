@@ -181,12 +181,12 @@ class YouTubePlugin(BeetsPlugin):
         yt_artist_id = item['artists'][0].get('id', '')
         year = item["year"]
         url = item['thumbnails'][-1]['url']
-        if self.is_valid_image_url(url) and 'cover_art_url' not in self.exclude_fields:
+        if self.is_valid_image_url(url) and \
+            'cover_art_url' not in self.exclude_fields:
             cover_art_url = url
         else:
             cover_art_url = None
-        artists = item['artists'][0].get('name', '')
-        self._log.debug('artists: {}', artists)
+        yt_artists = item['artists'][0].get('name', '')
         songs = item["tracks"]
         tracks = []
         medium_totals = collections.defaultdict(int)
@@ -205,6 +205,10 @@ class YouTubePlugin(BeetsPlugin):
             artist_id = yt_artist_id
         else:
             artist_id = None
+        if 'artist' not in self.exclude_fields:
+            artists = yt_artists
+        else:
+            artists = None            
         return AlbumInfo(album=album,
                          album_id=album_id,
                          yt_album_id=yt_album_id,
