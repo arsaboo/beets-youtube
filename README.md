@@ -25,9 +25,6 @@ This plugin relies on OAuth authentication as detailed [here](https://ytmusicapi
 youtube:
     exclude_fields:
         - cover_art_url
-        - album_id
-        - artist_id
-        - artist
 ```
 
 ## Features
