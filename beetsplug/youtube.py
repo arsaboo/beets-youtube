@@ -94,9 +94,6 @@ class YouTubePlugin(BeetsPlugin):
             if write:
                 item.try_write()
 
-    #yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
-    # yt = YTMusic('oauth.json')
-
     def get_albums(self, query):
         """Returns a list of AlbumInfo objects for a Youtube search query.
         """
@@ -196,25 +193,11 @@ class YouTubePlugin(BeetsPlugin):
             track.index = i
             medium_totals[track.medium] += 1
             tracks.append(track)
-        for track in tracks:
-            track.medium_total = medium_totals[track.medium]
-        if 'album_id' not in self.exclude_fields:
-            album_id = yt_album_id
-        else:
-            album_id = None
-        if 'artist_id' not in self.exclude_fields:
-            artist_id = yt_artist_id
-        else:
-            artist_id = None
-        if 'artist' not in self.exclude_fields:
-            artists = yt_artists
-        else:
-            artists = None            
         return AlbumInfo(album=album,
-                         album_id=album_id,
+                         album_id=yt_album_id,
                          yt_album_id=yt_album_id,
-                         artist=artists,
-                         artist_id=artist_id,
+                         artist=yt_artists,
+                         artist_id=yt_artist_id,
                          yt_artist_id=yt_artist_id,
                          tracks=tracks,
                          albumtype=type,
