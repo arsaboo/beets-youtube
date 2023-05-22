@@ -82,10 +82,6 @@ class YouTubePlugin(BeetsPlugin):
                 self._log.debug('No yt_track_id present for: {}', item)
                 continue
             try:
-                yt_track_id = item.yt_track_id
-            except AttributeError:
-                self._log.debug('No yt_track_id present for: {}', item)
-            try:
                 views = self.get_yt_views(yt_track_id)
                 views = self.get_yt_views(yt_track_id)
                 self._log.debug('YouTube videoId: {} has {} views',
