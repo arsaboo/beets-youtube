@@ -83,7 +83,6 @@ class YouTubePlugin(BeetsPlugin):
                 continue
             try:
                 views = self.get_yt_views(yt_track_id)
-                views = self.get_yt_views(yt_track_id)
                 self._log.debug('YouTube videoId: {} has {} views',
                                 yt_track_id, views)
             except Exception as e:
