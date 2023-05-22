@@ -82,9 +82,9 @@ class YouTubePlugin(BeetsPlugin):
                 self._log.debug('No yt_track_id present for: {}', item)
                 continue
             try:
-                views = self.get_yt_views(item.yt_track_id)
+                views = self.get_yt_views(yt_track_id)
                 self._log.debug('YouTube videoId: {} has {} views',
-                                item.yt_track_id, views)
+                                yt_track_id, views)
             except Exception as e:
                 self._log.debug('Invalid YouTube videoId: {}', e)
                 continue
