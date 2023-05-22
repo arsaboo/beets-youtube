@@ -212,14 +212,14 @@ class YouTubePlugin(BeetsPlugin):
         """Convert a Youtube song object to a TrackInfo object.
         """
         self._log.debug('track_data: {}', track_data)
-        id = track_data.get('videoId', '')
+        yt_track_id = track_data.get('videoId', '')
         self._log.debug('id: {}', id)
         views = self.get_yt_views(id)
         # Get track information for YouTube tracks
         return TrackInfo(
             title=track_data.get('title').replace("&quot;", "\""),
-            track_id=id,
-            yt_track_id=id,
+            track_id=yt_track_id,
+            yt_track_id=yt_track_id,
             artist=track_data.get('artists', '')[0].get('name', ''),
             album=track_data.get('album').replace("&quot;", "\""),
             yt_artist_id=track_data.get('artists', '')[0].get('id', ''),
