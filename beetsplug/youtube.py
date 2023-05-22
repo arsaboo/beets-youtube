@@ -57,7 +57,6 @@ class YouTubePlugin(BeetsPlugin):
             config=self.config
         )
 
-
     def commands(self):
         """Add beet UI commands to interact with Youtube."""
         ytupdate_cmd = ui.Subcommand(
@@ -76,26 +75,22 @@ class YouTubePlugin(BeetsPlugin):
         for index, item in enumerate(items, start=1):
             self._log.info('Processing {}/{} tracks - {} ',
                            index, len(items), item)
-            if item.yt_track_id is None:
-                self._log.debug('YouTube videoId not found for : {}',
-                                item)
-                continue
             try:
-                views = self.get_yt_views(item.yt_track_id)
+                yt_track_id = item.yt_track_id
+            except AttributeError:
+                self._log.debug('No yt_track_id present for: {}', item)
+            try:
+                views = self.get_yt_views(yt_track_id)
                 self._log.debug('YouTube videoId: {} has {} views',
-                                item.yt_track_id, views)
-            except:
-                self._log.debug('Invalid YouTube videoId: {}',
-                                item.yt_track_id)
+                                yt_track_id, views)
+            except Exception as e:
+                self._log.debug('Invalid YouTube videoId: {}', e)
                 continue
             item.yt_views = views
             item.yt_updated = time.time()
             item.store()
             if write:
                 item.try_write()
-
-    #yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
-    # yt = YTMusic('oauth.json')
 
     def get_albums(self, query):
         """Returns a list of AlbumInfo objects for a Youtube search query.
