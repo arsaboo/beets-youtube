@@ -23,7 +23,7 @@ class YouTubePlugin(BeetsPlugin):
 
     item_types = {
         'yt_album_id': types.STRING,
-        'yt_artist_id': types.INTEGER,
+        'yt_artist_id': types.STRING,
         'yt_track_id': types.STRING,
         'yt_updated': DateType(),
         'yt_views': types.INTEGER,
