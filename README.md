@@ -20,7 +20,15 @@ Add `YouTube` to your list of enabled plugins.
 plugins: youtube
 ```
 
-This plugin relies on OAuth authentication as detailed [here](https://ytmusicapi.readthedocs.io/en/stable/setup/oauth.html) and expects the oauth.json file in the beets config folder. The easiest way to make it work is to generate the oauth.json outside the plugin and just paste the json file in the beets folder.
+This plugin relies on OAuth authentication as detailed [here](https://ytmusicapi.readthedocs.io/en/stable/setup/oauth.html) and expects the oauth.json file in the beets config folder. The easiest way to make it work is to generate the oauth.json outside the plugin and just paste the json file in the beets folder. You can configure fields to be excluded from being updated using the following config (only these fields can be excluded):
+```yaml
+youtube:
+    exclude_fields:
+        - cover_art_url
+        - album_id
+        - artist_id
+        - artist
+```
 
 ## Features
 

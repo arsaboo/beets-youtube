@@ -23,7 +23,7 @@ class YouTubePlugin(BeetsPlugin):
 
     item_types = {
         'yt_album_id': types.STRING,
-        'yt_artist_id': types.INTEGER,
+        'yt_artist_id': types.STRING,
         'yt_track_id': types.STRING,
         'yt_updated': DateType(),
         'yt_views': types.INTEGER,
@@ -35,6 +35,7 @@ class YouTubePlugin(BeetsPlugin):
         self.config.add({
             'source_weight': 0.5,
         })
+        self.exclude_fields = self.config["exclude_fields"].as_str_seq()
         self.yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
 
     def album_distance(self, items, album_info, mapping):
@@ -79,7 +80,13 @@ class YouTubePlugin(BeetsPlugin):
                 yt_track_id = item.yt_track_id
             except AttributeError:
                 self._log.debug('No yt_track_id present for: {}', item)
+                continue
             try:
+                yt_track_id = item.yt_track_id
+            except AttributeError:
+                self._log.debug('No yt_track_id present for: {}', item)
+            try:
+                views = self.get_yt_views(yt_track_id)
                 views = self.get_yt_views(yt_track_id)
                 self._log.debug('YouTube videoId: {} has {} views',
                                 yt_track_id, views)
@@ -174,13 +181,15 @@ class YouTubePlugin(BeetsPlugin):
         album = item["title"].replace("&quot;", "\"")
         type = item["type"]
         yt_album_id = browseID
-        artist_id = item['artists'][0].get('id', '')
+        yt_artist_id = item['artists'][0].get('id', '')
         year = item["year"]
         url = item['thumbnails'][-1]['url']
-        if self.is_valid_image_url(url):
+        if self.is_valid_image_url(url) and \
+            'cover_art_url' not in self.exclude_fields:
             cover_art_url = url
-        artists = item['artists'][0].get('name', '')
-        self._log.debug('artists: {}', artists)
+        else:
+            cover_art_url = None
+        yt_artists = item['artists'][0].get('name', '')
         songs = item["tracks"]
         tracks = []
         medium_totals = collections.defaultdict(int)
@@ -191,12 +200,24 @@ class YouTubePlugin(BeetsPlugin):
             tracks.append(track)
         for track in tracks:
             track.medium_total = medium_totals[track.medium]
+        if 'album_id' not in self.exclude_fields:
+            album_id = yt_album_id
+        else:
+            album_id = None
+        if 'artist_id' not in self.exclude_fields:
+            artist_id = yt_artist_id
+        else:
+            artist_id = None
+        if 'artist' not in self.exclude_fields:
+            artists = yt_artists
+        else:
+            artists = None            
         return AlbumInfo(album=album,
-                         album_id=yt_album_id,
+                         album_id=album_id,
                          yt_album_id=yt_album_id,
                          artist=artists,
                          artist_id=artist_id,
-                         yt_artist_id=artist_id,
+                         yt_artist_id=yt_artist_id,
                          tracks=tracks,
                          albumtype=type,
                          year=year,
@@ -226,7 +247,6 @@ class YouTubePlugin(BeetsPlugin):
             data_source=self.data_source,
             yt_updated=time.time(),
         )
-
 
     def album_for_id(self, browseId):
         """Fetches an album by its YouTube browseID and returns an AlbumInfo object
