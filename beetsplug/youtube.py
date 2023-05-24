@@ -286,7 +286,8 @@ class YouTubePlugin(BeetsPlugin):
             artist = det.get('author').replace("&quot;", "\"")
             # Create a dictionary with the song information
             song_dict = {"title": title.strip(),
-                         "artist": artist.strip()}
+                         "artist": artist.strip(),
+                         "album": ""}
             # Append the dictionary to the list of songs
             song_list.append(song_dict)
         return song_list
