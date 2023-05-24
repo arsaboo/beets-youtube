@@ -9,6 +9,7 @@ import time
 from io import BytesIO
 
 import requests
+import yt_dlp
 from beets import config, ui
 from beets.autotag.hooks import AlbumInfo, Distance, TrackInfo
 from beets.dbcore import types
@@ -243,6 +244,13 @@ class YouTubePlugin(BeetsPlugin):
     #     song_details = self.yt.get_song(track_id)
     #     return self._get_track(song_details['videoDetails'])
 
+    def get_yt_song_details(self, track_id):
+        """Fetches a track by its YouTube ID and returns a TrackInfo object
+        """
+        self._log.debug('Searching for track {0}', track_id)
+        song_details = self.yt.get_song(track_id)
+        return song_details['videoDetails']
+
     def is_valid_image_url(self, url):
         try:
             response = requests.get(url)
@@ -257,3 +265,28 @@ class YouTubePlugin(BeetsPlugin):
             return views
         except:
             return None
+
+    def get_yt_playlist_json(self, url):
+        ydl_opts = {
+            'dump_single_json': True,
+            'extract_flat': 'in_playlist',
+            'skip_download': True,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            return ydl.extract_info(url, download=False)
+
+    def import_youtube_playlist(self, url):
+        """This function returns a list of tracks in a YouTube playlist."""
+        songs = self.get_yt_playlist_json(url)
+        song_list = []
+        for song in songs['entries']:
+            # Find and store the song title
+            det = self.get_yt_song_details(song['id'])
+            title = det.get('title').replace("&quot;", "\"")
+            artist = det.get('author').replace("&quot;", "\"")
+            # Create a dictionary with the song information
+            song_dict = {"title": title.strip(),
+                         "artist": artist.strip()}
+            # Append the dictionary to the list of songs
+            song_list.append(song_dict)
+        return song_list

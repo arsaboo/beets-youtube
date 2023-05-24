@@ -16,5 +16,6 @@ setup(
         'ytmusicapi',
         'requests',
         'pillow',
+        'yt_dlp',
     ],
 )
