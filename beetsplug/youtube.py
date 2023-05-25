@@ -234,7 +234,10 @@ class YouTubePlugin(BeetsPlugin):
         """Fetches an album by its YouTube browseID and returns an AlbumInfo object
         """
         self._log.debug('Searching for album {0}', browseId)
-        album_details = self.yt.get_album(browseId)
+        try:
+            album_details = self.yt.get_album(browseId)
+        except Exception:
+            return None
         return self.get_album_info(album_details, 'album')
 
     # def track_for_id(self, track_id=None):
