@@ -35,8 +35,10 @@ class YouTubePlugin(BeetsPlugin):
         super().__init__()
         self.config.add({
             'source_weight': 0.5,
+            'exclude_fields': [],
         })
-        self.exclude_fields = self.config["exclude_fields"].as_str_seq()
+        if self.config["exclude_fields"].exists():
+            self.exclude_fields = self.config["exclude_fields"].as_str_seq()            
         self.yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
 
     def album_distance(self, items, album_info, mapping):
