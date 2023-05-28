@@ -287,6 +287,7 @@ class YouTubePlugin(BeetsPlugin):
             print('songs from YTMusicAPI: {0}', songs)
         else:
             list = self.get_yt_playlist_json(url)
+            print('list', list)
             songs = list['entries']
             print('songs from YTDLP: {0}', songs)
         for song in songs:
