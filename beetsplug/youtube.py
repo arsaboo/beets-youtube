@@ -284,11 +284,11 @@ class YouTubePlugin(BeetsPlugin):
             playlist_id = url.split("playlist?list=")[1]
             list = self.yt.get_playlist(playlist_id)            
             songs = list['tracks']
-            self._log.debug('songs from YTMusicAPI: {0}', songs)
+            print('songs from YTMusicAPI: {0}', songs)
         else:
             list = self.get_yt_playlist_json(url)
             songs = list['entries']
-            self._log.debug('songs from YTDLP: {0}', songs)
+            print('songs from YTDLP: {0}', songs)
         for song in songs:
             # Find and store the song title
             album = None
