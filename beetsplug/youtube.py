@@ -268,45 +268,23 @@ class YouTubePlugin(BeetsPlugin):
         except:
             return None
 
-    def get_yt_playlist_json(self, url):
-        ydl_opts = {
-            'dump_single_json': True,
-            'extract_flat': 'in_playlist',
-            'skip_download': True,
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            return ydl.extract_info(url, download=False)
-
     def import_youtube_playlist(self, url):
         """This function returns a list of tracks in a YouTube playlist."""
         song_list = []
-        if "playlist?list=" in url:
-            playlist_id = url.split("playlist?list=")[1]
-            list = self.yt.get_playlist(playlist_id)
-            songs = list['tracks']
-            print('songs from YTMusicAPI: {0}', songs)
+        if "playlist?list=" not in url:
+            self._log.error("Invalid YouTube playlist URL: {0}", url)
         else:
-            list = self.get_yt_playlist_json(url)
-            print('list', list)
-            songs = list['entries']
-            print('songs from YTDLP: {0}', songs)
-        for song in songs:
-            # Find and store the song title
-            album = None
-            if 'album' in song:  # this came from YTMusicAPI
+            playlist_id = url.split("playlist?list=")[1]
+            songs = self.yt.get_playlist(playlist_id)
+            for song in songs['tracks']:
+                # Find and store the song title
                 title = song['title'].replace("&quot;", "\"")
                 artist = song['artists'][0]['name'].replace("&quot;", "\"")
                 album = song['album']['name'].replace("&quot;", "\"")
-                print(f"song: {song['title']}, album: {song['album']['name']}, artist: {song['artists'][0]['name']}")
-            else:
-                det = self.get_yt_song_details(song['id'])
-                print('det', det)
-                title = det.get('title').replace("&quot;", "\"")
-                artist = det.get('author').replace("&quot;", "\"")
-        # Create a dictionary with the song information
-        song_dict = {"title": title.strip(),
-                     "artist": artist.strip(),
-                     "album": album.strip() if album else None}
-        # Append the dictionary to the list of songs
-        song_list.append(song_dict)
+                # Create a dictionary with the song information
+                song_dict = {"title": title.strip(),
+                             "artist": artist.strip(),
+                             "album": album.strip() if album else None}
+                # Append the dictionary to the list of songs
+                song_list.append(song_dict)
         return song_list
