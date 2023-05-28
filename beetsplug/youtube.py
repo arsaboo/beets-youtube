@@ -292,7 +292,7 @@ class YouTubePlugin(BeetsPlugin):
         for song in songs:
             # Find and store the song title
             album = None
-            if hasattr(song, 'album'):  # this came from YTMusicAPI
+            if 'album' in song:  # this came from YTMusicAPI
                 title = song['title'].replace("&quot;", "\"")
                 artist = song['artists'][0]['name'].replace("&quot;", "\"")
                 album = song['album']['name'].replace("&quot;", "\"")
