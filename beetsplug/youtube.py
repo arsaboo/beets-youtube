@@ -9,14 +9,22 @@ import time
 from io import BytesIO
 
 import requests
-import yt_dlp
-from beets import config, ui
+from beets import config, ui, importer
 from beets.autotag.hooks import AlbumInfo, Distance, TrackInfo
 from beets.dbcore import types
 from beets.library import DateType
 from beets.plugins import BeetsPlugin, get_distance
 from PIL import Image
 from ytmusicapi import YTMusic
+
+
+def extend_reimport_fresh_fields_item():
+    """Extend the REIMPORT_FRESH_FIELDS_ITEM list so that these fields
+    are updated during reimport."""
+
+    importer.REIMPORT_FRESH_FIELDS_ITEM.extend([
+        'yt_album_id', 'yt_artist_id', 'yt_track_id',
+        'yt_updated', 'yt_views'])
 
 
 class YouTubePlugin(BeetsPlugin):
@@ -38,16 +46,16 @@ class YouTubePlugin(BeetsPlugin):
             'exclude_fields': [],
         })
         if self.config["exclude_fields"].exists():
-            self.exclude_fields = self.config["exclude_fields"].as_str_seq()            
+            self.exclude_fields = self.config["exclude_fields"].as_str_seq()
         self.yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
 
     def album_distance(self, items, album_info, mapping):
-
         """Returns the album distance.
         """
         dist = Distance()
         if album_info.data_source == 'YouTube':
-            dist.add('source', self.config['source_weight'].as_number())
+            dist.add('source',
+                     float(self.config['source_weight'].as_number()))
         return dist
 
     def track_distance(self, item, track_info):
@@ -181,9 +189,11 @@ class YouTubePlugin(BeetsPlugin):
         yt_artist_id = item['artists'][0].get('id', '')
         year = item["year"]
         url = item['thumbnails'][-1]['url']
-        if self.is_valid_image_url(url) and \
-            'cover_art_url' not in self.exclude_fields:
-            cover_art_url = url
+        if 'cover_art_url' not in self.config['exclude_fields'].as_str_seq():
+            if self.is_valid_image_url(url):
+                cover_art_url = url
+            else:
+                cover_art_url = None
         else:
             cover_art_url = None
         yt_artists = item['artists'][0].get('name', '')
@@ -258,14 +268,14 @@ class YouTubePlugin(BeetsPlugin):
             response = requests.get(url)
             Image.open(BytesIO(response.content))
             return True
-        except:
+        except Exception:
             return False
 
     def get_yt_views(self, id):
         try:
             views = self.yt.get_song(id)['videoDetails']['viewCount']
             return views
-        except:
+        except Exception:
             return None
 
     def import_youtube_playlist(self, url):
