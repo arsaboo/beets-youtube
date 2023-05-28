@@ -9,6 +9,7 @@ import time
 from io import BytesIO
 
 import requests
+import yt_dlp
 from beets import config, ui
 from beets.autotag.hooks import AlbumInfo, Distance, TrackInfo
 from beets.dbcore import types
@@ -268,7 +269,6 @@ class YouTubePlugin(BeetsPlugin):
             return None
 
     def get_yt_playlist_json(self, url):
-        import yt_dlp
         ydl_opts = {
             'dump_single_json': True,
             'extract_flat': 'in_playlist',
@@ -282,7 +282,7 @@ class YouTubePlugin(BeetsPlugin):
         song_list = []
         if "playlist?list=" in url:
             playlist_id = url.split("playlist?list=")[1]
-            list = self.yt.get_playlist(playlist_id)            
+            list = self.yt.get_playlist(playlist_id)
             songs = list['tracks']
             print('songs from YTMusicAPI: {0}', songs)
         else:
