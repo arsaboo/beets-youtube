@@ -9,7 +9,6 @@ import time
 from io import BytesIO
 
 import requests
-import yt_dlp
 from beets import config, ui
 from beets.autotag.hooks import AlbumInfo, Distance, TrackInfo
 from beets.dbcore import types
@@ -269,6 +268,7 @@ class YouTubePlugin(BeetsPlugin):
             return None
 
     def get_yt_playlist_json(self, url):
+        import yt_dlp
         ydl_opts = {
             'dump_single_json': True,
             'extract_flat': 'in_playlist',
@@ -279,17 +279,31 @@ class YouTubePlugin(BeetsPlugin):
 
     def import_youtube_playlist(self, url):
         """This function returns a list of tracks in a YouTube playlist."""
-        songs = self.get_yt_playlist_json(url)
         song_list = []
-        for song in songs['entries']:
+        if "playlist?list=" in url:
+            playlist_id = url.split("playlist?list=")[1]
+            list = self.yt.get_playlist(playlist_id)
+            songs = list['tracks']
+        else:
+            list = self.get_yt_playlist_json(url)
+            songs = list['entries']
+        for song in songs:
             # Find and store the song title
-            det = self.get_yt_song_details(song['id'])
-            title = det.get('title').replace("&quot;", "\"")
-            artist = det.get('author').replace("&quot;", "\"")
-            # Create a dictionary with the song information
-            song_dict = {"title": title.strip(),
-                         "artist": artist.strip(),
-                         "album": ""}
-            # Append the dictionary to the list of songs
-            song_list.append(song_dict)
+            album = None
+            if hasattr(song, 'album'):  # this came from YTMusicAPI
+                title = song['title'].replace("&quot;", "\"")
+                artist = song['artists'][0]['name'].replace("&quot;", "\"")
+                album = song['album']['name'].replace("&quot;", "\"")
+                print(f"song: {song['title']}, album: {song['album']['name']}, artist: {song['artists'][0]['name']}")
+            else:
+                det = self.get_yt_song_details(song['id'])
+                print('det', det)
+                title = det.get('title').replace("&quot;", "\"")
+                artist = det.get('author').replace("&quot;", "\"")
+        # Create a dictionary with the song information
+        song_dict = {"title": title.strip(),
+                     "artist": artist.strip(),
+                     "album": album.strip() if album else None}
+        # Append the dictionary to the list of songs
+        song_list.append(song_dict)
         return song_list
