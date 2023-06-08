@@ -240,7 +240,7 @@ class YouTubePlugin(BeetsPlugin):
         )
 
     def album_for_id(self, browseId):
-        """Fetches an album by its YouTube browseID and returns an AlbumInfo object
+        """Fetch an album by its YouTube browseID and return an AlbumInfo object
         """
         self._log.debug('Searching for album {0}', browseId)
         try:
