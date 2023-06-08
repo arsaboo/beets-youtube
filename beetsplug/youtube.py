@@ -291,7 +291,10 @@ class YouTubePlugin(BeetsPlugin):
                 self._log.debug("Found song: {0}", song)
                 title = song['title'].replace("&quot;", "\"")
                 artist = song['artists'][0]['name'].replace("&quot;", "\"")
-                album = song['album']['name'].replace("&quot;", "\"")
+                try:
+                    album = song['album']['name'].replace("&quot;", "\"")
+                except Exception:
+                    album = None
                 # Create a dictionary with the song information
                 song_dict = {"title": title.strip(),
                              "artist": artist.strip(),
