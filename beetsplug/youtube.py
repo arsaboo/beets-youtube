@@ -288,6 +288,7 @@ class YouTubePlugin(BeetsPlugin):
             songs = self.yt.get_playlist(playlist_id)
             for song in songs['tracks']:
                 # Find and store the song title
+                self._log.debug("Found song: {0}", song)
                 title = song['title'].replace("&quot;", "\"")
                 artist = song['artists'][0]['name'].replace("&quot;", "\"")
                 album = song['album']['name'].replace("&quot;", "\"")
