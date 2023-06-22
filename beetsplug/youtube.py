@@ -244,6 +244,8 @@ class YouTubePlugin(BeetsPlugin):
         """
         self._log.debug('Searching for album {0}', browseId)
         if 'OLAK5uy' in browseId:
+            if '=' in browseId:
+                browseId = browseId.split('=')[1]
             browseId = self.yt.get_album_browse_id(browseId)
             self._log.debug('New browseId {0}', browseId)
         try:
