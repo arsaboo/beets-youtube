@@ -245,6 +245,7 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug('Searching for album {0}', browseId)
         if 'OLAK5uy' in browseId:
             browseId = self.yt.get_album_browse_id(browseId)
+            self._log.debug('New browseId {0}', browseId)
         try:
             album_details = self.yt.get_album(browseId)
         except Exception:
