@@ -9,7 +9,7 @@ import time
 from io import BytesIO
 
 import requests
-from beets import config, ui, importer
+from beets import config, importer, ui
 from beets.autotag.hooks import AlbumInfo, Distance, TrackInfo
 from beets.dbcore import types
 from beets.library import DateType
@@ -55,7 +55,7 @@ class YouTubePlugin(BeetsPlugin):
         dist = Distance()
         if album_info.data_source == 'YouTube':
             dist.add('source',
-                     float(self.config['source_weight'].as_number()))
+                     float(self.config['source_weight'].get()))
         return dist
 
     def track_distance(self, item, track_info):
@@ -122,6 +122,7 @@ class YouTubePlugin(BeetsPlugin):
             data = self.yt.search(query, 'albums', limit=5)
         except Exception as e:
             self._log.debug('Invalid Search Error: {}'.format(e))
+            return albums
         for album in data:
             self._log.debug('Found album: {} with browseID: {}',
                             album['title'], album['browseId'])
@@ -148,6 +149,7 @@ class YouTubePlugin(BeetsPlugin):
             data = self.yt.search(query, 'songs', limit=5)
         except Exception as e:
             self._log.debug('Invalid Search Error: {}'.format(e))
+            return tracks
         for track in data:
             id = track["videoId"]
             song_details = self.yt.get_song(id)
@@ -306,4 +308,31 @@ class YouTubePlugin(BeetsPlugin):
                              "album": album.strip() if album else None}
                 # Append the dictionary to the list of songs
                 song_list.append(song_dict)
+        return song_list
+
+    def import_youtube_search(self, search, limit):
+        """This function returns a list of songs sorted by the number
+        of views in a YouTube search."""
+        song_list = []
+        songs = self.yt.search(search, limit)
+        for song in songs:
+            # Find and store the song title
+            self._log.debug("Found song: {0}", song)
+            song_details = self.yt.get_song(song['videoId'])
+            title = song['title'].replace("&quot;", "\"")
+            artist = song['artists'][0]['name'].replace("&quot;", "\"")
+            views = song_details['videoDetails']['viewCount']
+            try:
+                album = song['album']['name'].replace("&quot;", "\"")
+            except Exception:
+                album = None
+            # Create a dictionary with the song information
+            song_dict = {"title": title.strip(),
+                         "artist": artist.strip(),
+                         "album": album.strip() if album else None,
+                         "views": int(views) if views else None}
+            # Append the dictionary to the list of songs
+            song_list.append(song_dict)
+        # Sort the list of songs by the number of views
+        song_list = sorted(song_list, key=lambda k: k['views'], reverse=True)
         return song_list
