@@ -314,7 +314,7 @@ class YouTubePlugin(BeetsPlugin):
         """This function returns a list of songs sorted by the number
         of views in a YouTube search."""
         song_list = []
-        songs = self.yt.search(search, limit)
+        songs = self.yt.search(query=search, filter="songs", limit=limit)
         for song in songs:
             # Find and store the song title
             self._log.debug("Found song: {0}", song)
