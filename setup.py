@@ -16,6 +16,5 @@ setup(
         'ytmusicapi',
         'requests',
         'pillow',
-        'difflib',
     ],
 )
