@@ -7,6 +7,7 @@ import os
 import re
 import time
 from io import BytesIO
+from difflib import SequenceMatcher
 
 import requests
 from beets import config, importer, ui
@@ -331,9 +332,14 @@ class YouTubePlugin(BeetsPlugin):
                          "artist": artist.strip(),
                          "album": album.strip() if album else None,
                          "views": int(views) if views else None}
+            match_score = SequenceMatcher(None, title.lower(), search.lower()).ratio()
+            song_dict['match_score'] = match_score
             self._log.debug("Found song: {0}", song_dict)
             # Append the dictionary to the list of songs
             song_list.append(song_dict)
         # Sort the list of songs by the number of views
-        song_list = sorted(song_list, key=lambda k: k['views'], reverse=True)
+        song_list = sorted(song_list,
+                           key=lambda k: (k['match_score'],
+                                          k['views'] if k['views'] else 0),
+                           reverse=True)
         return song_list
