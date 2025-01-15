@@ -311,91 +311,12 @@ class YouTubePlugin(BeetsPlugin):
                 song_list.append(song_dict)
         return song_list
 
-    def _get_match_score(self, title, artist, search_term):
-        """Calculate match score based on title and artist similarity."""
-        def clean_string(s):
-            s = re.sub(r'[^\w\s]', ' ', s.lower())
-            s = re.sub(r'\s+', ' ', s).strip()
-            s = re.sub(r'\b(from|feat|ft|featuring|official|video|audio|lyrics)\b', '', s)
-            return s.strip()
-
-        def get_edit_distance(s1, s2):
-            """Get normalized Levenshtein distance."""
-            if not s1 or not s2:
-                return 0
-            from difflib import ndiff
-            diff = list(ndiff(s1, s2))
-            edits = len([d for d in diff if d[0] != ' '])
-            max_len = max(len(s1), len(s2))
-            return 1 - (edits / (2 * max_len))  # Normalize to 0-1
-
-        # Split search into components
-        search_parts = search_term.split(' - ', 1)
-        if len(search_parts) == 2:
-            search_title, search_artist = search_parts
-        else:
-            search_title = search_term
-            search_artist = ''
-
-        # Clean strings
-        title_clean = clean_string(title)
-        artist_clean = clean_string(artist)
-        search_title_clean = clean_string(search_title)
-        search_artist_clean = clean_string(search_artist)
-
-        # Calculate base title similarity
-        title_score = SequenceMatcher(None, title_clean, search_title_clean).ratio()
-
-        # Add edit distance to title score
-        title_edit_score = get_edit_distance(title_clean, search_title_clean)
-        title_score = (title_score + title_edit_score) / 2
-
-        # Strict length ratio penalty
-        len_ratio = min(len(title_clean), len(search_title_clean)) / max(len(title_clean), len(search_title_clean))
-        if len_ratio < 0.8:  # Penalize significant length differences
-            title_score *= len_ratio
-
-        # Prefix/substring match bonus
-        if title_clean.startswith(search_title_clean) or search_title_clean.startswith(title_clean):
-            title_score = min(1.0, title_score * 1.2)
-        elif title_clean in search_title_clean or search_title_clean in title_clean:
-            title_score = min(1.0, title_score * 1.1)
-
-        # Exact match bonus
-        if title_clean == search_title_clean:
-            title_score = 1.0
-
-        # Heavy penalty for very low title matches
-        if title_score < 0.4:
-            title_score *= 0.3
-
-        # Artist matching
-        if search_artist_clean:
-            artist_score = SequenceMatcher(None, artist_clean, search_artist_clean).ratio()
-            artist_edit_score = get_edit_distance(artist_clean, search_artist_clean)
-            artist_score = (artist_score + artist_edit_score) / 2
-
-            if artist_clean == search_artist_clean:
-                artist_score = 1.0
-        else:
-            artist_score = 0.5
-
-        # Final weighted score (85% title, 15% artist)
-        final_score = (title_score * 0.85) + (artist_score * 0.15)
-
-        # Set minimum threshold
-        if final_score < 0.35:
-            final_score *= 0.5
-
-        return final_score
-
     def import_youtube_search(self, search, limit):
-        """Returns a list of songs sorted by match score and views."""
+        """Returns the top N songs from YouTube search."""
         song_list = []
         songs = self.yt.search(query=search, filter="songs", limit=int(limit))
+
         for song in songs:
-            # Find and store the song title
-            #self._log.debug("Found song: {0}", song)
             song_details = self.yt.get_song(song['videoId'])
             title = song['title'].replace("&quot;", "\"")
             artist = song['artists'][0]['name'].replace("&quot;", "\"")
@@ -409,17 +330,6 @@ class YouTubePlugin(BeetsPlugin):
                         "artist": artist.strip(),
                         "album": album.strip() if album else None,
                         "views": int(views) if views else None}
-
-            match_score = self._get_match_score(title, artist, search)
-            # Only include songs that meet minimum match threshold
-            if match_score >= 0.35:
-                song_dict['match_score'] = match_score
-                self._log.debug("Found song: {0}", song_dict)
-                song_list.append(song_dict)
-
-        # Sort by match score first, then by views
-        song_list = sorted(song_list,
-                        key=lambda k: (k['match_score'],
-                                     k['views'] if k['views'] else 0),
-                        reverse=True)
-        return song_list
+            song_list.append(song_dict)
+        # let us limit the number of songs to the limit
+        return song_list[:int(limit)]
