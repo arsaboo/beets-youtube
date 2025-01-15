@@ -311,6 +311,38 @@ class YouTubePlugin(BeetsPlugin):
                 song_list.append(song_dict)
         return song_list
 
+    def _get_match_score(self, title, artist, search_term):
+        """Calculate match score based on title and artist similarity.
+        Returns a value between 0 and 1."""
+        # Clean strings for comparison
+        def clean_string(s):
+            # Remove punctuation, extra spaces, and convert to lowercase
+            s = re.sub(r'[^\w\s]', ' ', s.lower())
+            s = re.sub(r'\s+', ' ', s).strip()
+            # Remove common filler words
+            s = re.sub(r'\b(from|feat|ft|featuring|official|video|audio|lyrics)\b', '', s)
+            return s.strip()
+
+        search_clean = clean_string(search_term)
+        title_clean = clean_string(title)
+        artist_clean = clean_string(artist)
+
+        # Calculate base similarity scores
+        title_score = SequenceMatcher(None, title_clean, search_clean).ratio()
+        artist_score = SequenceMatcher(None, artist_clean, search_clean).ratio()
+
+        # Boost exact matches
+        if title_clean == search_clean:
+            title_score = 1.0
+        if artist_clean == search_clean:
+            artist_score = 1.0
+
+        # Weight title matches more heavily than artist matches
+        # Title is 70% of score, artist is 30%
+        combined_score = (title_score * 0.7) + (artist_score * 0.3)
+
+        return combined_score
+
     def import_youtube_search(self, search, limit):
         """This function returns a list of songs sorted by the number
         of views in a YouTube search."""
@@ -332,7 +364,7 @@ class YouTubePlugin(BeetsPlugin):
                          "artist": artist.strip(),
                          "album": album.strip() if album else None,
                          "views": int(views) if views else None}
-            match_score = SequenceMatcher(None, title.lower(), search.lower()).ratio()
+            match_score = self._get_match_score(title, artist, search)
             song_dict['match_score'] = match_score
             self._log.debug("Found song: {0}", song_dict)
             # Append the dictionary to the list of songs
