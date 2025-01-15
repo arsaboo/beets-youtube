@@ -314,7 +314,6 @@ class YouTubePlugin(BeetsPlugin):
     def _get_match_score(self, title, artist, search_term):
         """Calculate match score based on title and artist similarity.
         Returns a value between 0 and 1."""
-        # Clean strings for comparison
         def clean_string(s):
             # Remove punctuation, extra spaces, and convert to lowercase
             s = re.sub(r'[^\w\s]', ' ', s.lower())
@@ -323,25 +322,47 @@ class YouTubePlugin(BeetsPlugin):
             s = re.sub(r'\b(from|feat|ft|featuring|official|video|audio|lyrics)\b', '', s)
             return s.strip()
 
-        search_clean = clean_string(search_term)
+        # Split search term into title and artist if possible
+        search_parts = search_term.split(' - ', 1)
+        if len(search_parts) == 2:
+            search_title, search_artist = search_parts
+        else:
+            search_title = search_term
+            search_artist = ''
+
+        # Clean all strings
         title_clean = clean_string(title)
         artist_clean = clean_string(artist)
+        search_title_clean = clean_string(search_title)
+        search_artist_clean = clean_string(search_artist)
 
-        # Calculate base similarity scores
-        title_score = SequenceMatcher(None, title_clean, search_clean).ratio()
-        artist_score = SequenceMatcher(None, artist_clean, search_clean).ratio()
+        # Calculate title similarity
+        title_score = SequenceMatcher(None, title_clean, search_title_clean).ratio()
 
-        # Boost exact matches
-        if title_clean == search_clean:
+        # Length penalty for title mismatch
+        len_ratio = min(len(title_clean), len(search_title_clean)) / max(len(title_clean), len(search_title_clean))
+        title_score *= len_ratio
+
+        # Exact match bonus for title
+        if title_clean == search_title_clean:
             title_score = 1.0
-        if artist_clean == search_clean:
-            artist_score = 1.0
 
-        # Weight title matches more heavily than artist matches
-        # Title is 70% of score, artist is 30%
-        combined_score = (title_score * 0.7) + (artist_score * 0.3)
+        # If title score is too low, heavily penalize the overall score
+        if title_score < 0.5:
+            title_score *= 0.5
 
-        return combined_score
+        # Artist matching only if we have an artist to match
+        if search_artist_clean:
+            artist_score = SequenceMatcher(None, artist_clean, search_artist_clean).ratio()
+            # Exact match bonus for artist
+            if artist_clean == search_artist_clean:
+                artist_score = 1.0
+        else:
+            # Don't penalize if no artist in search
+            artist_score = 0.5
+
+        # Weight title match much more heavily (80%) than artist match (20%)
+        return (title_score * 0.8) + (artist_score * 0.2)
 
     def import_youtube_search(self, search, limit):
         """This function returns a list of songs sorted by the number
