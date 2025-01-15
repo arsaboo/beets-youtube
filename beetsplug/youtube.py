@@ -312,13 +312,11 @@ class YouTubePlugin(BeetsPlugin):
         return song_list
 
     def import_youtube_search(self, search, limit):
-        """This function returns a list of songs sorted by the number
-        of views in a YouTube search."""
+        """Returns the top N songs from YouTube search."""
         song_list = []
         songs = self.yt.search(query=search, filter="songs", limit=int(limit))
+
         for song in songs:
-            # Find and store the song title
-            #self._log.debug("Found song: {0}", song)
             song_details = self.yt.get_song(song['videoId'])
             title = song['title'].replace("&quot;", "\"")
             artist = song['artists'][0]['name'].replace("&quot;", "\"")
@@ -329,17 +327,9 @@ class YouTubePlugin(BeetsPlugin):
                 album = None
             # Create a dictionary with the song information
             song_dict = {"title": title.strip(),
-                         "artist": artist.strip(),
-                         "album": album.strip() if album else None,
-                         "views": int(views) if views else None}
-            match_score = SequenceMatcher(None, title.lower(), search.lower()).ratio()
-            song_dict['match_score'] = match_score
-            self._log.debug("Found song: {0}", song_dict)
-            # Append the dictionary to the list of songs
+                        "artist": artist.strip(),
+                        "album": album.strip() if album else None,
+                        "views": int(views) if views else None}
             song_list.append(song_dict)
-        # Sort the list of songs by the number of views
-        song_list = sorted(song_list,
-                           key=lambda k: (k['match_score'],
-                                          k['views'] if k['views'] else 0),
-                           reverse=True)
-        return song_list
+        # let us limit the number of songs to the limit
+        return song_list[:int(limit)]
