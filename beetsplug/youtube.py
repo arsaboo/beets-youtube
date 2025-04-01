@@ -16,7 +16,7 @@ from beets.dbcore import types
 from beets.library import DateType
 from beets.plugins import BeetsPlugin, get_distance
 from PIL import Image
-from ytmusicapi import YTMusic
+from ytmusicapi import YTMusic, OAuthCredentials
 
 
 def extend_reimport_fresh_fields_item():
@@ -45,10 +45,26 @@ class YouTubePlugin(BeetsPlugin):
         self.config.add({
             'source_weight': 0.5,
             'exclude_fields': [],
+            'client_id': '',
+            'client_secret': '',
         })
         if self.config["exclude_fields"].exists():
             self.exclude_fields = self.config["exclude_fields"].as_str_seq()
-        self.yt = YTMusic(os.path.join(config.config_dir(), 'oauth.json'))
+
+        client_id = self.config['client_id'].get()
+        client_secret = self.config['client_secret'].get()
+        oauth_credentials = None
+
+        if client_id and client_secret:
+            oauth_credentials = OAuthCredentials(
+                client_id=client_id,
+                client_secret=client_secret
+            )
+
+        self.yt = YTMusic(
+            os.path.join(config.config_dir(), 'oauth.json'),
+            oauth_credentials=oauth_credentials
+        )
 
     def album_distance(self, items, album_info, mapping):
         """Returns the album distance.
