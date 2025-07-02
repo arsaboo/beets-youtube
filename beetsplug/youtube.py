@@ -11,8 +11,7 @@ from difflib import SequenceMatcher
 
 import requests
 from beets import config, importer, ui
-from beets.autotag.hooks import AlbumInfo, TrackInfo
-from beets.autotag.distance import Distance
+from beets.autotag.hooks import AlbumInfo, TrackInfo, Distance
 from beets.dbcore import types
 from beets.library import DateType
 from beets.plugins import BeetsPlugin, get_distance
