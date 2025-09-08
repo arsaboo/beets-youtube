@@ -336,25 +336,22 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug("Playlist ID type: {0}", type(playlist_id))
         self._log.debug("Playlist ID starts with RD: {0}", playlist_id.startswith('RD'))
 
-        # Debug the YTMusic instance
-        self._log.debug("YTMusic instance type: {0}", type(self.yt))
-        self._log.debug("YTMusic instance: {0}", self.yt)
+        # Try creating a fresh YTMusic instance for this call
+        self._log.debug("Creating fresh YTMusic instance for playlist call...")
+        try:
+            fresh_yt = YTMusic()
+            self._log.debug("Fresh YTMusic instance created successfully")
+        except Exception as fresh_e:
+            self._log.error("Failed to create fresh YTMusic instance: {0}", fresh_e)
+            fresh_yt = self.yt  # Fall back to existing instance
 
         try:
             # Add more detailed debugging around the API call
-            self._log.debug("About to call: self.yt.get_playlist('{0}')", playlist_id)
+            self._log.debug("About to call: fresh_yt.get_playlist('{0}')", playlist_id)
 
-            # Try a simple test call first
-            try:
-                self._log.debug("Testing with get_playlist method existence...")
-                method = getattr(self.yt, 'get_playlist', None)
-                self._log.debug("get_playlist method: {0}", method)
-            except Exception as method_e:
-                self._log.error("Error checking method: {0}", method_e)
-
-            # Make the actual call
-            playlist_data = self.yt.get_playlist(playlist_id)
-            self._log.debug("API call completed successfully")
+            # Make the actual call with fresh instance
+            playlist_data = fresh_yt.get_playlist(playlist_id)
+            self._log.debug("API call completed successfully with fresh instance")
 
             if playlist_data is None:
                 self._log.error("YouTube API returned None for playlist ID: {0}", playlist_id)
@@ -368,11 +365,30 @@ class YouTubePlugin(BeetsPlugin):
             self._log.info("Found {0} tracks in playlist", len(songs))
 
         except Exception as e:
-            self._log.error("Failed to get YouTube playlist {0}: {1}", playlist_id, str(e))
-            # Add more detailed error information
-            import traceback
-            self._log.debug("Full traceback: {0}", traceback.format_exc())
-            return []
+            self._log.error("Failed to get YouTube playlist {0} with fresh instance: {1}", playlist_id, str(e))
+
+            # Try with original instance as fallback
+            self._log.debug("Trying with original instance as fallback...")
+            try:
+                playlist_data = self.yt.get_playlist(playlist_id)
+                self._log.debug("API call completed successfully with original instance")
+
+                if playlist_data is None:
+                    self._log.error("YouTube API returned None for playlist ID: {0}", playlist_id)
+                    return []
+
+                if 'tracks' not in playlist_data:
+                    self._log.error("No tracks found in playlist response for ID: {0}", playlist_id)
+                    return []
+
+                songs = playlist_data['tracks']
+                self._log.info("Found {0} tracks in playlist with original instance", len(songs))
+
+            except Exception as e2:
+                self._log.error("Both fresh and original instances failed: {0}", str(e2))
+                import traceback
+                self._log.debug("Full traceback: {0}", traceback.format_exc())
+                return []
 
         song_list = []
         for song in songs:
