@@ -340,7 +340,8 @@ class YouTubePlugin(BeetsPlugin):
                 limit = 200
                 self._log.debug("Using limit {0} for regular playlist", limit)
 
-            playlist_data = self.yt.get_playlist(playlist_id, limit=limit)
+            # Use explicit keyword arguments to match the API signature
+            playlist_data = self.yt.get_playlist(playlistId=playlist_id, limit=limit)
 
             if playlist_data is None:
                 self._log.error("YouTube API returned None for playlist ID: {0}", playlist_id)
@@ -403,58 +404,58 @@ class YouTubePlugin(BeetsPlugin):
         if not songs:
             self._log.warning("No songs found for search query: {0}", search)
             return []
-
         song_list = []
         for song in songs:
-            try:
+            try: in songs:
                 # Get basic song info
                 title = song.get('title', '').replace("&quot;", "\"")
-
+                title = song.get('title', '').replace("&quot;", "\"")
                 # Handle artists list safely
                 artists = song.get('artists', [])
-                if artists and len(artists) > 0:
+                if artists and len(artists) > 0:)
                     artist = artists[0].get('name', '').replace("&quot;", "\"")
-                else:
+                else:rtist = artists[0].get('name', '').replace("&quot;", "\"")
                     artist = ''
-
+                    artist = ''
                 # Handle album safely
-                try:
+                try:ndle album safely
                     album = song.get('album', {})
                     if album and 'name' in album:
                         album_name = album['name'].replace("&quot;", "\"")
-                    else:
+                    else:lbum_name = album['name'].replace("&quot;", "\"")
                         album_name = None
-                except Exception:
+                except Exception:e = None
                     album_name = None
-
+                    album_name = None
                 # Try to get detailed song info for view count
-                views = None
-                try:
+                views = None detailed song info for view count
+                try:s = None
                     video_id = song.get('videoId')
-                    if video_id:
+                    if video_id:ong.get('videoId')
                         song_details = self.yt.get_song(video_id)
                         views = song_details.get('videoDetails', {}).get('viewCount')
-                        views = int(views) if views else None
-                except Exception as e:
+                        views = int(views) if views else Nones', {}).get('viewCount')
+                except Exception as e:ews) if views else None
                     self._log.debug("Could not get view count for {0}: {1}", title, e)
+                    views = Nonebug("Could not get view count for {0}: {1}", title, e)
                     views = None
-
                 # Create a dictionary with the song information
-                song_dict = {
+                song_dict = {ctionary with the song information
                     "title": title.strip(),
                     "artist": artist.strip(),
                     "album": album_name.strip() if album_name else None,
-                    "views": views
-                }
+                    "views": views_name.strip() if album_name else None,
+                }   "views": views
                 song_list.append(song_dict)
-
+                song_list.append(song_dict)
             except Exception as e:
                 self._log.debug("Error processing song {0}: {1}", song, e)
+                continueg.debug("Error processing song {0}: {1}", song, e)
                 continue
-
         # Limit the number of songs to the specified limit
+        return song_list[:int(limit)]o the specified limit
         return song_list[:int(limit)]
-
     def import_yt_search(self, search, limit):
         """Alias for import_youtube_search to match plexsync expectations."""
+        return self.import_youtube_search(search, limit)sync expectations."""
         return self.import_youtube_search(search, limit)
