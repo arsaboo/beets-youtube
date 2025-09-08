@@ -319,7 +319,7 @@ class YouTubePlugin(BeetsPlugin):
         """This function returns a list of tracks in a YouTube playlist."""
         if "playlist?list=" not in url:
             self._log.error("Invalid YouTube playlist URL: {0}", url)
-            return None
+            return []
 
         playlist_id = url.split("playlist?list=")[1]
         # Remove any additional parameters from the playlist ID
@@ -329,22 +329,27 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug("Attempting to get playlist with ID: {0}", playlist_id)
 
         try:
-            playlist_data = self.yt.get_playlist(playlist_id, limit=None)
+            # Use a reasonable limit instead of None to avoid API issues
+            # Radio playlists (starting with RD) may not support unlimited fetching
+            limit = 200 if not playlist_id.startswith('RD') else 100
+            self._log.debug("Using limit {0} for playlist type", limit)
+
+            playlist_data = self.yt.get_playlist(playlist_id, limit=limit)
 
             if playlist_data is None:
                 self._log.error("YouTube API returned None for playlist ID: {0}", playlist_id)
-                return None
+                return []
 
             if 'tracks' not in playlist_data:
                 self._log.error("No tracks found in playlist response for ID: {0}", playlist_id)
-                return None
+                return []
 
             songs = playlist_data['tracks']
             self._log.info("Found {0} tracks in playlist", len(songs))
 
         except Exception as e:
             self._log.error("Failed to get YouTube playlist {0}: {1}", playlist_id, str(e))
-            return None
+            return []
 
         song_list = []
         for song in songs:
@@ -377,13 +382,17 @@ class YouTubePlugin(BeetsPlugin):
 
         return song_list
 
+    def import_yt_playlist(self, url):
+        """Alias for import_youtube_playlist to match plexsync expectations."""
+        return self.import_youtube_playlist(url)
+
     def import_youtube_search(self, search, limit):
         """Returns the top N songs from YouTube search."""
         try:
             songs = self.yt.search(query=search, filter="songs", limit=int(limit))
         except Exception as e:
             self._log.error("Failed to search YouTube for '{0}': {1}", search, str(e))
-            return None
+            return []  # Return empty list instead of None
 
         if not songs:
             self._log.warning("No songs found for search query: {0}", search)
@@ -439,3 +448,7 @@ class YouTubePlugin(BeetsPlugin):
 
         # Limit the number of songs to the specified limit
         return song_list[:int(limit)]
+
+    def import_yt_search(self, search, limit):
+        """Alias for import_youtube_search to match plexsync expectations."""
+        return self.import_youtube_search(search, limit)
