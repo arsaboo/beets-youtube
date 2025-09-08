@@ -329,19 +329,8 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug("Attempting to get playlist with ID: {0}", playlist_id)
 
         try:
-            # For radio playlists (starting with RD), use a small limit but expect more tracks
-            # Regular playlists can use None or larger limits
-            if playlist_id.startswith('RD'):
-                # Radio playlists seem to return full playlist even with small limits
-                limit = 5
-                self._log.debug("Using limit {0} for radio playlist", limit)
-            else:
-                # Regular playlists can handle larger limits
-                limit = 200
-                self._log.debug("Using limit {0} for regular playlist", limit)
-
-            # Use explicit keyword arguments to match the API signature
-            playlist_data = self.yt.get_playlist(playlistId=playlist_id, limit=limit)
+            # Use default limit (100) which works for all playlist types
+            playlist_data = self.yt.get_playlist(playlist_id)
 
             if playlist_data is None:
                 self._log.error("YouTube API returned None for playlist ID: {0}", playlist_id)
@@ -399,63 +388,63 @@ class YouTubePlugin(BeetsPlugin):
             songs = self.yt.search(query=search, filter="songs", limit=int(limit))
         except Exception as e:
             self._log.error("Failed to search YouTube for '{0}': {1}", search, str(e))
-            return []  # Return empty list instead of None
+            return []
 
         if not songs:
             self._log.warning("No songs found for search query: {0}", search)
             return []
+
         song_list = []
         for song in songs:
-            try: in songs:
+            try:
                 # Get basic song info
                 title = song.get('title', '').replace("&quot;", "\"")
-                title = song.get('title', '').replace("&quot;", "\"")
+
                 # Handle artists list safely
                 artists = song.get('artists', [])
-                if artists and len(artists) > 0:)
+                if artists and len(artists) > 0:
                     artist = artists[0].get('name', '').replace("&quot;", "\"")
-                else:rtist = artists[0].get('name', '').replace("&quot;", "\"")
+                else:
                     artist = ''
-                    artist = ''
+
                 # Handle album safely
-                try:ndle album safely
+                try:
                     album = song.get('album', {})
                     if album and 'name' in album:
                         album_name = album['name'].replace("&quot;", "\"")
-                    else:lbum_name = album['name'].replace("&quot;", "\"")
+                    else:
                         album_name = None
-                except Exception:e = None
+                except Exception:
                     album_name = None
-                    album_name = None
+
                 # Try to get detailed song info for view count
-                views = None detailed song info for view count
-                try:s = None
+                views = None
+                try:
                     video_id = song.get('videoId')
-                    if video_id:ong.get('videoId')
+                    if video_id:
                         song_details = self.yt.get_song(video_id)
                         views = song_details.get('videoDetails', {}).get('viewCount')
-                        views = int(views) if views else Nones', {}).get('viewCount')
-                except Exception as e:ews) if views else None
+                        views = int(views) if views else None
+                except Exception as e:
                     self._log.debug("Could not get view count for {0}: {1}", title, e)
-                    views = Nonebug("Could not get view count for {0}: {1}", title, e)
                     views = None
+
                 # Create a dictionary with the song information
-                song_dict = {ctionary with the song information
+                song_dict = {
                     "title": title.strip(),
                     "artist": artist.strip(),
                     "album": album_name.strip() if album_name else None,
-                    "views": views_name.strip() if album_name else None,
-                }   "views": views
+                    "views": views
+                }
                 song_list.append(song_dict)
-                song_list.append(song_dict)
+
             except Exception as e:
                 self._log.debug("Error processing song {0}: {1}", song, e)
-                continueg.debug("Error processing song {0}: {1}", song, e)
                 continue
+
         # Limit the number of songs to the specified limit
-        return song_list[:int(limit)]o the specified limit
         return song_list[:int(limit)]
+
     def import_yt_search(self, search, limit):
         """Alias for import_youtube_search to match plexsync expectations."""
-        return self.import_youtube_search(search, limit)sync expectations."""
         return self.import_youtube_search(search, limit)
