@@ -317,6 +317,10 @@ class YouTubePlugin(BeetsPlugin):
 
     def import_youtube_playlist(self, url):
         """This function returns a list of tracks in a YouTube playlist."""
+        # Add detailed debugging
+        self._log.debug("=== DEBUG: Starting import_youtube_playlist ===")
+        self._log.debug("URL received: {0}", url)
+
         if "playlist?list=" not in url:
             self._log.error("Invalid YouTube playlist URL: {0}", url)
             return []
@@ -326,11 +330,31 @@ class YouTubePlugin(BeetsPlugin):
         if "&" in playlist_id:
             playlist_id = playlist_id.split("&")[0]
 
-        self._log.debug("Attempting to get playlist with ID: {0}", playlist_id)
+        # Debug the playlist ID extraction
+        self._log.debug("Extracted playlist ID: '{0}'", playlist_id)
+        self._log.debug("Playlist ID length: {0}", len(playlist_id))
+        self._log.debug("Playlist ID type: {0}", type(playlist_id))
+        self._log.debug("Playlist ID starts with RD: {0}", playlist_id.startswith('RD'))
+
+        # Debug the YTMusic instance
+        self._log.debug("YTMusic instance type: {0}", type(self.yt))
+        self._log.debug("YTMusic instance: {0}", self.yt)
 
         try:
-            # Use default limit (100) which works for all playlist types
+            # Add more detailed debugging around the API call
+            self._log.debug("About to call: self.yt.get_playlist('{0}')", playlist_id)
+
+            # Try a simple test call first
+            try:
+                self._log.debug("Testing with get_playlist method existence...")
+                method = getattr(self.yt, 'get_playlist', None)
+                self._log.debug("get_playlist method: {0}", method)
+            except Exception as method_e:
+                self._log.error("Error checking method: {0}", method_e)
+
+            # Make the actual call
             playlist_data = self.yt.get_playlist(playlist_id)
+            self._log.debug("API call completed successfully")
 
             if playlist_data is None:
                 self._log.error("YouTube API returned None for playlist ID: {0}", playlist_id)
@@ -345,6 +369,9 @@ class YouTubePlugin(BeetsPlugin):
 
         except Exception as e:
             self._log.error("Failed to get YouTube playlist {0}: {1}", playlist_id, str(e))
+            # Add more detailed error information
+            import traceback
+            self._log.debug("Full traceback: {0}", traceback.format_exc())
             return []
 
         song_list = []
