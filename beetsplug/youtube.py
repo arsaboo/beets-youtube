@@ -61,10 +61,23 @@ class YouTubePlugin(BeetsPlugin):
                 client_secret=client_secret
             )
 
-        self.yt = YTMusic(
-            os.path.join(config.config_dir(), 'oauth.json'),
-            oauth_credentials=oauth_credentials
-        )
+        # Try to initialize with OAuth first, fall back to no auth
+        oauth_path = os.path.join(config.config_dir(), 'oauth.json')
+        try:
+            if os.path.exists(oauth_path) and oauth_credentials:
+                self.yt = YTMusic(oauth_path, oauth_credentials=oauth_credentials)
+            elif os.path.exists(oauth_path):
+                self.yt = YTMusic(oauth_path)
+            else:
+                # Fall back to no authentication
+                self.yt = YTMusic()
+        except Exception as e:
+            self._log.warning('Failed to initialize YTMusic with OAuth, trying without auth: {}', e)
+            try:
+                self.yt = YTMusic()
+            except Exception as e2:
+                self._log.error('Failed to initialize YTMusic: {}', e2)
+                raise
 
     def album_distance(self, items, album_info, mapping):
         """Returns the album distance.
@@ -304,48 +317,125 @@ class YouTubePlugin(BeetsPlugin):
 
     def import_youtube_playlist(self, url):
         """This function returns a list of tracks in a YouTube playlist."""
-        song_list = []
         if "playlist?list=" not in url:
             self._log.error("Invalid YouTube playlist URL: {0}", url)
-        else:
-            playlist_id = url.split("playlist?list=")[1]
-            songs = self.yt.get_playlist(playlist_id)
-            for song in songs['tracks']:
-                # Find and store the song title
-                self._log.debug("Found song: {0}", song)
-                title = song['title'].replace("&quot;", "\"")
-                artist = song['artists'][0]['name'].replace("&quot;", "\"")
-                try:
-                    album = song['album']['name'].replace("&quot;", "\"")
-                except Exception:
-                    album = None
-                # Create a dictionary with the song information
-                song_dict = {"title": title.strip(),
-                             "artist": artist.strip(),
-                             "album": album.strip() if album else None}
-                # Append the dictionary to the list of songs
-                song_list.append(song_dict)
+            return None
+
+        playlist_id = url.split("playlist?list=")[1]
+        # Remove any additional parameters from the playlist ID
+        if "&" in playlist_id:
+            playlist_id = playlist_id.split("&")[0]
+
+        self._log.debug("Attempting to get playlist with ID: {0}", playlist_id)
+
+        try:
+            playlist_data = self.yt.get_playlist(playlist_id, limit=None)
+
+            if playlist_data is None:
+                self._log.error("YouTube API returned None for playlist ID: {0}", playlist_id)
+                return None
+
+            if 'tracks' not in playlist_data:
+                self._log.error("No tracks found in playlist response for ID: {0}", playlist_id)
+                return None
+
+            songs = playlist_data['tracks']
+            self._log.info("Found {0} tracks in playlist", len(songs))
+
+        except Exception as e:
+            self._log.error("Failed to get YouTube playlist {0}: {1}", playlist_id, str(e))
+            return None
+
+        song_list = []
+        for song in songs:
+            # Find and store the song title
+            self._log.debug("Found song: {0}", song)
+            title = song.get('title', '').replace("&quot;", "\"")
+
+            # Handle artists list safely
+            artists = song.get('artists', [])
+            if artists and len(artists) > 0:
+                artist = artists[0].get('name', '').replace("&quot;", "\"")
+            else:
+                artist = ''
+
+            try:
+                album = song.get('album', {})
+                if album and 'name' in album:
+                    album_name = album['name'].replace("&quot;", "\"")
+                else:
+                    album_name = None
+            except Exception:
+                album_name = None
+
+            # Create a dictionary with the song information
+            song_dict = {"title": title.strip(),
+                         "artist": artist.strip(),
+                         "album": album_name.strip() if album_name else None}
+            # Append the dictionary to the list of songs
+            song_list.append(song_dict)
+
         return song_list
 
     def import_youtube_search(self, search, limit):
         """Returns the top N songs from YouTube search."""
-        song_list = []
-        songs = self.yt.search(query=search, filter="songs", limit=int(limit))
+        try:
+            songs = self.yt.search(query=search, filter="songs", limit=int(limit))
+        except Exception as e:
+            self._log.error("Failed to search YouTube for '{0}': {1}", search, str(e))
+            return None
 
+        if not songs:
+            self._log.warning("No songs found for search query: {0}", search)
+            return []
+
+        song_list = []
         for song in songs:
-            song_details = self.yt.get_song(song['videoId'])
-            title = song['title'].replace("&quot;", "\"")
-            artist = song['artists'][0]['name'].replace("&quot;", "\"")
-            views = song_details['videoDetails']['viewCount']
             try:
-                album = song['album']['name'].replace("&quot;", "\"")
-            except Exception:
-                album = None
-            # Create a dictionary with the song information
-            song_dict = {"title": title.strip(),
-                        "artist": artist.strip(),
-                        "album": album.strip() if album else None,
-                        "views": int(views) if views else None}
-            song_list.append(song_dict)
-        # let us limit the number of songs to the limit
+                # Get basic song info
+                title = song.get('title', '').replace("&quot;", "\"")
+
+                # Handle artists list safely
+                artists = song.get('artists', [])
+                if artists and len(artists) > 0:
+                    artist = artists[0].get('name', '').replace("&quot;", "\"")
+                else:
+                    artist = ''
+
+                # Handle album safely
+                try:
+                    album = song.get('album', {})
+                    if album and 'name' in album:
+                        album_name = album['name'].replace("&quot;", "\"")
+                    else:
+                        album_name = None
+                except Exception:
+                    album_name = None
+
+                # Try to get detailed song info for view count
+                views = None
+                try:
+                    video_id = song.get('videoId')
+                    if video_id:
+                        song_details = self.yt.get_song(video_id)
+                        views = song_details.get('videoDetails', {}).get('viewCount')
+                        views = int(views) if views else None
+                except Exception as e:
+                    self._log.debug("Could not get view count for {0}: {1}", title, e)
+                    views = None
+
+                # Create a dictionary with the song information
+                song_dict = {
+                    "title": title.strip(),
+                    "artist": artist.strip(),
+                    "album": album_name.strip() if album_name else None,
+                    "views": views
+                }
+                song_list.append(song_dict)
+
+            except Exception as e:
+                self._log.debug("Error processing song {0}: {1}", song, e)
+                continue
+
+        # Limit the number of songs to the specified limit
         return song_list[:int(limit)]
