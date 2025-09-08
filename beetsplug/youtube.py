@@ -329,10 +329,16 @@ class YouTubePlugin(BeetsPlugin):
         self._log.debug("Attempting to get playlist with ID: {0}", playlist_id)
 
         try:
-            # Use a reasonable limit instead of None to avoid API issues
-            # Radio playlists (starting with RD) may not support unlimited fetching
-            limit = 200 if not playlist_id.startswith('RD') else 100
-            self._log.debug("Using limit {0} for playlist type", limit)
+            # For radio playlists (starting with RD), use a small limit but expect more tracks
+            # Regular playlists can use None or larger limits
+            if playlist_id.startswith('RD'):
+                # Radio playlists seem to return full playlist even with small limits
+                limit = 5
+                self._log.debug("Using limit {0} for radio playlist", limit)
+            else:
+                # Regular playlists can handle larger limits
+                limit = 200
+                self._log.debug("Using limit {0} for regular playlist", limit)
 
             playlist_data = self.yt.get_playlist(playlist_id, limit=limit)
 
