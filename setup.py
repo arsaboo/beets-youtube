@@ -12,7 +12,7 @@ setup(
     platforms='ALL',
     packages=['beetsplug'],
     install_requires=[
-        'beets>=1.6.0',
+        'beets>=1.6.0,<3.0.0',
         'ytmusicapi>=1.10.2',
         'requests',
         'pillow',
