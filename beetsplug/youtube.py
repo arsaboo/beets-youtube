@@ -16,7 +16,6 @@ from beets.autotag.distance import Distance
 from beets.dbcore import types
 from beets.library import DateType
 from beets.plugins import BeetsPlugin
-from beets.autotag.distance import distance
 from PIL import Image
 from ytmusicapi import YTMusic, OAuthCredentials
 
@@ -94,7 +93,10 @@ class YouTubePlugin(BeetsPlugin):
         """Returns the Youtube source weight and the maximum source weight
         for individual tracks.
         """
-        return distance(self.data_source, track_info, self.config)
+        dist = Distance()
+        if getattr(track_info, 'data_source', None) == self.data_source:
+            dist.add('source', float(self.config['source_weight'].get()))
+        return dist
 
     def commands(self):
         """Add beet UI commands to interact with Youtube."""
