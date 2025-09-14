@@ -16,7 +16,6 @@ from beets.autotag.distance import Distance
 from beets.dbcore import types
 from beets.dbcore.types import DateType
 from beets.metadata_plugins import MetadataSourcePlugin
-from beets.plugins import BeetsPlugin
 from PIL import Image
 from ytmusicapi import YTMusic, OAuthCredentials
 
@@ -30,7 +29,7 @@ def extend_reimport_fresh_fields_item():
         'yt_updated', 'yt_views'])
 
 
-class YouTubePlugin(BeetsPlugin, MetadataSourcePlugin):
+class YouTubePlugin(MetadataSourcePlugin):
     data_source = 'YouTube'
 
     item_types = {
@@ -287,12 +286,12 @@ class YouTubePlugin(BeetsPlugin, MetadataSourcePlugin):
             return None
         return self.get_album_info(album_details, 'album')
 
-    # def track_for_id(self, track_id=None):
-    #     """Fetches a track by its YouTube ID and returns a TrackInfo object
-    #     """
-    #     self._log.debug('Searching for track {0}', track_id)
-    #     song_details = self.yt.get_song(track_id)
-    #     return self._get_track(song_details['videoDetails'])
+    def track_for_id(self, track_id):
+        """Fetches a track by its YouTube ID and returns a TrackInfo object
+        """
+        self._log.debug('Searching for track {0}', track_id)
+        song_details = self.yt.get_song(track_id)
+        return self._get_track(song_details['videoDetails'])
 
     def get_yt_song_details(self, track_id):
         """Fetches a track by its YouTube ID and returns a TrackInfo object
