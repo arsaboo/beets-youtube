@@ -15,7 +15,8 @@ from beets.autotag.hooks import AlbumInfo, TrackInfo
 from beets.autotag.distance import Distance
 from beets.dbcore import types
 from beets.dbcore.types import DateType
-from beets.plugins import BeetsPlugin, MetadataSourcePlugin
+from beets.metadata_plugins import MetadataSourcePlugin
+from beets.plugins import BeetsPlugin
 from PIL import Image
 from ytmusicapi import YTMusic, OAuthCredentials
 
@@ -104,7 +105,7 @@ class YouTubePlugin(BeetsPlugin, MetadataSourcePlugin):
             'ytupdate', help=f'Update {self.data_source} views')
 
         def func(lib, opts, args):
-            # Replace deprecated ui.decargs with direct argument handling
+            # Use direct argument handling (beets 2.4.0+)
             items = lib.items(args)
             self._ytupdate(items, ui.should_write())
 
