@@ -91,15 +91,10 @@ class YouTubePlugin(BeetsPlugin):
         return dist
 
     def track_distance(self, item, track_info):
-
         """Returns the Youtube source weight and the maximum source weight
         for individual tracks.
         """
-        return distance(
-            data_source=self.data_source,
-            info=track_info,
-            config=self.config
-        )
+        return distance(self.data_source, track_info, self.config)
 
     def commands(self):
         """Add beet UI commands to interact with Youtube."""
@@ -183,8 +178,8 @@ class YouTubePlugin(BeetsPlugin):
             self._log.debug('Invalid Search Error: {}'.format(e))
             return tracks
         for track in data:
-            id = track["videoId"]
-            song_details = self.yt.get_song(id)
+            video_id = track["videoId"]
+            song_details = self.yt.get_song(video_id)
             song_info = self._get_track(song_details['videoDetails'])
             tracks.append(song_info)
         return tracks
@@ -258,7 +253,7 @@ class YouTubePlugin(BeetsPlugin):
         """Convert a Youtube song object to a TrackInfo object.
         """
         yt_track_id = track_data.get('videoId', '')
-        views = self.get_yt_views(id)
+        views = self.get_yt_views(yt_track_id)
         # Get track information for YouTube tracks
         return TrackInfo(
             title=track_data.get('title').replace("&quot;", "\""),
