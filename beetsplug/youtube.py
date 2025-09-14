@@ -14,8 +14,8 @@ from beets import config, importer, ui
 from beets.autotag.hooks import AlbumInfo, TrackInfo
 from beets.autotag.distance import Distance
 from beets.dbcore import types
-from beets.library import DateType
-from beets.plugins import BeetsPlugin
+from beets.dbcore.types import DateType
+from beets.plugins import BeetsPlugin, MetadataSourcePlugin
 from PIL import Image
 from ytmusicapi import YTMusic, OAuthCredentials
 
@@ -29,7 +29,7 @@ def extend_reimport_fresh_fields_item():
         'yt_updated', 'yt_views'])
 
 
-class YouTubePlugin(BeetsPlugin):
+class YouTubePlugin(BeetsPlugin, MetadataSourcePlugin):
     data_source = 'YouTube'
 
     item_types = {
@@ -104,7 +104,8 @@ class YouTubePlugin(BeetsPlugin):
             'ytupdate', help=f'Update {self.data_source} views')
 
         def func(lib, opts, args):
-            items = lib.items(ui.decargs(args))
+            # Replace deprecated ui.decargs with direct argument handling
+            items = lib.items(args)
             self._ytupdate(items, ui.should_write())
 
         ytupdate_cmd.func = func
@@ -186,7 +187,7 @@ class YouTubePlugin(BeetsPlugin):
             tracks.append(song_info)
         return tracks
 
-    def candidates(self, items, artist, release, va_likely, extra_tags=None):
+    def candidates(self, items, artist, release, va_likely):
         """Returns a list of AlbumInfo objects for YouTube search results
         matching release and artist (if not various).
         """
