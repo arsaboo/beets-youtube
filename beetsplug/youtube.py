@@ -11,10 +11,12 @@ from difflib import SequenceMatcher
 
 import requests
 from beets import config, importer, ui
-from beets.autotag.hooks import AlbumInfo, TrackInfo, Distance
+from beets.autotag.hooks import AlbumInfo, TrackInfo
+from beets.autotag.distance import Distance
 from beets.dbcore import types
 from beets.library import DateType
-from beets.plugins import BeetsPlugin, get_distance
+from beets.plugins import BeetsPlugin
+from beets.autotag.distance import distance
 from PIL import Image
 from ytmusicapi import YTMusic, OAuthCredentials
 
@@ -80,7 +82,7 @@ class YouTubePlugin(BeetsPlugin):
         """Returns the Youtube source weight and the maximum source weight
         for individual tracks.
         """
-        return get_distance(
+        return distance(
             data_source=self.data_source,
             info=track_info,
             config=self.config
