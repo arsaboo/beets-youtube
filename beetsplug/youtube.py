@@ -271,17 +271,17 @@ class YouTubePlugin(MetadataSourcePlugin):
             yt_updated=time.time(),
         )
 
-    def album_for_id(self, browseId):
+    def album_for_id(self, album_id):
         """Fetch an album by its YouTube browseID and return an AlbumInfo object
         """
-        self._log.debug('Searching for album {0}', browseId)
-        if 'OLAK5uy' in browseId:
-            if '=' in browseId:
-                browseId = browseId.split('=')[1]
-            browseId = self.yt.get_album_browse_id(browseId)
-            self._log.debug('New browseId {0}', browseId)
+        self._log.debug('Searching for album {0}', album_id)
+        if 'OLAK5uy' in album_id:
+            if '=' in album_id:
+                album_id = album_id.split('=')[1]
+            album_id = self.yt.get_album_browse_id(album_id)
+            self._log.debug('New browseId {0}', album_id)
         try:
-            album_details = self.yt.get_album(browseId)
+            album_details = self.yt.get_album(album_id)
         except Exception:
             return None
         return self.get_album_info(album_details, 'album')
