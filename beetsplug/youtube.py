@@ -14,9 +14,8 @@ from beets import config, importer, ui
 from beets.autotag.hooks import AlbumInfo, TrackInfo
 from beets.autotag.distance import Distance
 from beets.dbcore import types
-from beets.library import DateType
-from beets.plugins import BeetsPlugin
-from beets.autotag.distance import distance
+from beets.dbcore.types import DateType
+from beets.metadata_plugins import MetadataSourcePlugin
 from PIL import Image
 from ytmusicapi import YTMusic, OAuthCredentials
 
@@ -30,7 +29,7 @@ def extend_reimport_fresh_fields_item():
         'yt_updated', 'yt_views'])
 
 
-class YouTubePlugin(BeetsPlugin):
+class YouTubePlugin(MetadataSourcePlugin):
     data_source = 'YouTube'
 
     item_types = {
@@ -63,10 +62,23 @@ class YouTubePlugin(BeetsPlugin):
                 client_secret=client_secret
             )
 
-        self.yt = YTMusic(
-            os.path.join(config.config_dir(), 'oauth.json'),
-            oauth_credentials=oauth_credentials
-        )
+        # Try to initialize with OAuth first, fall back to no auth
+        oauth_path = os.path.join(config.config_dir(), 'oauth.json')
+        try:
+            if os.path.exists(oauth_path) and oauth_credentials:
+                self.yt = YTMusic(oauth_path, oauth_credentials=oauth_credentials)
+            elif os.path.exists(oauth_path):
+                self.yt = YTMusic(oauth_path)
+            else:
+                # Fall back to no authentication
+                self.yt = YTMusic()
+        except Exception as e:
+            self._log.warning('Failed to initialize YTMusic with OAuth, trying without auth: {}', e)
+            try:
+                self.yt = YTMusic()
+            except Exception as e2:
+                self._log.error('Failed to initialize YTMusic: {}', e2)
+                raise
 
     def album_distance(self, items, album_info, mapping):
         """Returns the album distance.
@@ -78,15 +90,13 @@ class YouTubePlugin(BeetsPlugin):
         return dist
 
     def track_distance(self, item, track_info):
-
         """Returns the Youtube source weight and the maximum source weight
         for individual tracks.
         """
-        return distance(
-            data_source=self.data_source,
-            info=track_info,
-            config=self.config
-        )
+        dist = Distance()
+        if getattr(track_info, 'data_source', None) == self.data_source:
+            dist.add('source', float(self.config['source_weight'].get()))
+        return dist
 
     def commands(self):
         """Add beet UI commands to interact with Youtube."""
@@ -94,7 +104,8 @@ class YouTubePlugin(BeetsPlugin):
             'ytupdate', help=f'Update {self.data_source} views')
 
         def func(lib, opts, args):
-            items = lib.items(ui.decargs(args))
+            # Use direct argument handling (beets 2.4.0+)
+            items = lib.items(args)
             self._ytupdate(items, ui.should_write())
 
         ytupdate_cmd.func = func
@@ -170,13 +181,13 @@ class YouTubePlugin(BeetsPlugin):
             self._log.debug('Invalid Search Error: {}'.format(e))
             return tracks
         for track in data:
-            id = track["videoId"]
-            song_details = self.yt.get_song(id)
+            video_id = track["videoId"]
+            song_details = self.yt.get_song(video_id)
             song_info = self._get_track(song_details['videoDetails'])
             tracks.append(song_info)
         return tracks
 
-    def candidates(self, items, artist, release, va_likely, extra_tags=None):
+    def candidates(self, items, artist, release, va_likely):
         """Returns a list of AlbumInfo objects for YouTube search results
         matching release and artist (if not various).
         """
@@ -245,7 +256,7 @@ class YouTubePlugin(BeetsPlugin):
         """Convert a Youtube song object to a TrackInfo object.
         """
         yt_track_id = track_data.get('videoId', '')
-        views = self.get_yt_views(id)
+        views = self.get_yt_views(yt_track_id)
         # Get track information for YouTube tracks
         return TrackInfo(
             title=track_data.get('title').replace("&quot;", "\""),
@@ -275,12 +286,12 @@ class YouTubePlugin(BeetsPlugin):
             return None
         return self.get_album_info(album_details, 'album')
 
-    # def track_for_id(self, track_id=None):
-    #     """Fetches a track by its YouTube ID and returns a TrackInfo object
-    #     """
-    #     self._log.debug('Searching for track {0}', track_id)
-    #     song_details = self.yt.get_song(track_id)
-    #     return self._get_track(song_details['videoDetails'])
+    def track_for_id(self, track_id):
+        """Fetches a track by its YouTube ID and returns a TrackInfo object
+        """
+        self._log.debug('Searching for track {0}', track_id)
+        song_details = self.yt.get_song(track_id)
+        return self._get_track(song_details['videoDetails'])
 
     def get_yt_song_details(self, track_id):
         """Fetches a track by its YouTube ID and returns a TrackInfo object
@@ -306,48 +317,132 @@ class YouTubePlugin(BeetsPlugin):
 
     def import_youtube_playlist(self, url):
         """This function returns a list of tracks in a YouTube playlist."""
-        song_list = []
         if "playlist?list=" not in url:
             self._log.error("Invalid YouTube playlist URL: {0}", url)
-        else:
-            playlist_id = url.split("playlist?list=")[1]
-            songs = self.yt.get_playlist(playlist_id)
-            for song in songs['tracks']:
-                # Find and store the song title
-                self._log.debug("Found song: {0}", song)
-                title = song['title'].replace("&quot;", "\"")
-                artist = song['artists'][0]['name'].replace("&quot;", "\"")
-                try:
-                    album = song['album']['name'].replace("&quot;", "\"")
-                except Exception:
-                    album = None
-                # Create a dictionary with the song information
-                song_dict = {"title": title.strip(),
-                             "artist": artist.strip(),
-                             "album": album.strip() if album else None}
-                # Append the dictionary to the list of songs
-                song_list.append(song_dict)
+            return []
+
+        playlist_id = url.split("playlist?list=")[1]
+        # Remove any additional parameters from the playlist ID
+        if "&" in playlist_id:
+            playlist_id = playlist_id.split("&")[0]
+
+        self._log.debug("Attempting to get playlist with ID: {0}", playlist_id)
+
+        try:
+            # Create a fresh YTMusic instance for this call to avoid state issues
+            fresh_yt = YTMusic()
+            playlist_data = fresh_yt.get_playlist(playlist_id)
+
+            if playlist_data is None:
+                self._log.error("YouTube API returned None for playlist ID: {0}", playlist_id)
+                return []
+
+            if 'tracks' not in playlist_data:
+                self._log.error("No tracks found in playlist response for ID: {0}", playlist_id)
+                return []
+
+            songs = playlist_data['tracks']
+            self._log.info("Found {0} tracks in playlist", len(songs))
+
+        except Exception as e:
+            self._log.error("Failed to get YouTube playlist {0}: {1}", playlist_id, str(e))
+            return []
+
+        song_list = []
+        for song in songs:
+            title = song.get('title', '').replace("&quot;", "\"")
+
+            # Handle artists list safely
+            artists = song.get('artists', [])
+            if artists and len(artists) > 0:
+                artist = artists[0].get('name', '').replace("&quot;", "\"")
+            else:
+                artist = ''
+
+            try:
+                album = song.get('album', {})
+                if album and 'name' in album:
+                    album_name = album['name'].replace("&quot;", "\"")
+                else:
+                    album_name = None
+            except Exception:
+                album_name = None
+
+            # Create a dictionary with the song information
+            song_dict = {"title": title.strip(),
+                         "artist": artist.strip(),
+                         "album": album_name.strip() if album_name else None}
+            song_list.append(song_dict)
+
         return song_list
+
+    def import_yt_playlist(self, url):
+        """Alias for import_youtube_playlist to match plexsync expectations."""
+        return self.import_youtube_playlist(url)
 
     def import_youtube_search(self, search, limit):
         """Returns the top N songs from YouTube search."""
-        song_list = []
-        songs = self.yt.search(query=search, filter="songs", limit=int(limit))
+        try:
+            songs = self.yt.search(query=search, filter="songs", limit=int(limit))
+        except Exception as e:
+            self._log.error("Failed to search YouTube for '{0}': {1}", search, str(e))
+            return []
 
+        if not songs:
+            self._log.warning("No songs found for search query: {0}", search)
+            return []
+
+        song_list = []
         for song in songs:
-            song_details = self.yt.get_song(song['videoId'])
-            title = song['title'].replace("&quot;", "\"")
-            artist = song['artists'][0]['name'].replace("&quot;", "\"")
-            views = song_details['videoDetails']['viewCount']
             try:
-                album = song['album']['name'].replace("&quot;", "\"")
-            except Exception:
-                album = None
-            # Create a dictionary with the song information
-            song_dict = {"title": title.strip(),
-                        "artist": artist.strip(),
-                        "album": album.strip() if album else None,
-                        "views": int(views) if views else None}
-            song_list.append(song_dict)
-        # let us limit the number of songs to the limit
+                # Get basic song info
+                title = song.get('title', '').replace("&quot;", "\"")
+
+                # Handle artists list safely
+                artists = song.get('artists', [])
+                if artists and len(artists) > 0:
+                    artist = artists[0].get('name', '').replace("&quot;", "\"")
+                else:
+                    artist = ''
+
+                # Handle album safely
+                try:
+                    album = song.get('album', {})
+                    if album and 'name' in album:
+                        album_name = album['name'].replace("&quot;", "\"")
+                    else:
+                        album_name = None
+                except Exception:
+                    album_name = None
+
+                # Try to get detailed song info for view count
+                views = None
+                try:
+                    video_id = song.get('videoId')
+                    if video_id:
+                        song_details = self.yt.get_song(video_id)
+                        views = song_details.get('videoDetails', {}).get('viewCount')
+                        views = int(views) if views else None
+                except Exception as e:
+                    self._log.debug("Could not get view count for {0}: {1}", title, e)
+                    views = None
+
+                # Create a dictionary with the song information
+                song_dict = {
+                    "title": title.strip(),
+                    "artist": artist.strip(),
+                    "album": album_name.strip() if album_name else None,
+                    "views": views
+                }
+                song_list.append(song_dict)
+
+            except Exception as e:
+                self._log.debug("Error processing song {0}: {1}", song, e)
+                continue
+
+        # Limit the number of songs to the specified limit
         return song_list[:int(limit)]
+
+    def import_yt_search(self, search, limit):
+        """Alias for import_youtube_search to match plexsync expectations."""
+        return self.import_youtube_search(search, limit)
