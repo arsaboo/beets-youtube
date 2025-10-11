@@ -14,7 +14,7 @@ from beets.autotag.hooks import AlbumInfo, TrackInfo
 from beets.autotag.distance import Distance
 from beets.dbcore import types
 from beets.dbcore.types import DateType
-from beets.metadata_plugin import MetadataSourcePlugin  # beets 2.4.0 import path
+from beets.metadata_plugins import MetadataSourcePlugin
 from PIL import Image
 from ytmusicapi import YTMusic, OAuthCredentials
 
