@@ -7,7 +7,6 @@ import os
 import re
 import time
 from io import BytesIO
-from difflib import SequenceMatcher
 
 import requests
 from beets import config, importer, ui
@@ -15,7 +14,7 @@ from beets.autotag.hooks import AlbumInfo, TrackInfo
 from beets.autotag.distance import Distance
 from beets.dbcore import types
 from beets.dbcore.types import DateType
-from beets.metadata_plugins import MetadataSourcePlugin
+from beets.metadata_plugin import MetadataSourcePlugin  # beets 2.4.0 import path
 from PIL import Image
 from ytmusicapi import YTMusic, OAuthCredentials
 
@@ -149,7 +148,7 @@ class YouTubePlugin(MetadataSourcePlugin):
         albums = []
         self._log.debug('Searching Youtube for album: {}', query)
         try:
-            data = self.yt.search(query, 'albums', limit=5)
+            data = self.yt.search(query, filter='albums', limit=5)
         except Exception as e:
             self._log.debug('Invalid Search Error: {}'.format(e))
             return albums
@@ -176,7 +175,7 @@ class YouTubePlugin(MetadataSourcePlugin):
         tracks = []
         self._log.debug('Searching YouTube for track: {}', query)
         try:
-            data = self.yt.search(query, 'songs', limit=5)
+            data = self.yt.search(query, filter='songs', limit=5)
         except Exception as e:
             self._log.debug('Invalid Search Error: {}'.format(e))
             return tracks
@@ -220,9 +219,15 @@ class YouTubePlugin(MetadataSourcePlugin):
         yt_album_id = browseID
         yt_artist_id = item['artists'][0].get('id', '')
         year = item["year"]
-        url = item['thumbnails'][-1]['url']
+        url = None
+        try:
+            thumbs = item.get('thumbnails') or []
+            if thumbs:
+                url = thumbs[-1].get('url')
+        except Exception:
+            url = None
         if 'cover_art_url' not in self.config['exclude_fields'].as_str_seq():
-            if self.is_valid_image_url(url):
+            if url and self.is_valid_image_url(url):
                 cover_art_url = url
             else:
                 cover_art_url = None
@@ -235,8 +240,15 @@ class YouTubePlugin(MetadataSourcePlugin):
         for i, song in enumerate(songs, start=1):
             track = self._get_track(song)
             track.index = i
-            medium_totals[track.medium] += 1
+            # Default to disc 1 when missing; ytmusicapi may not provide disc info
+            try:
+                disc_no = song.get('discNumber', 1)
+            except Exception:
+                disc_no = 1
+            track.medium = disc_no
+            medium_totals[disc_no] += 1
             tracks.append(track)
+        mediums = max(medium_totals.keys()) if medium_totals else 1
         return AlbumInfo(album=album,
                          album_id=yt_album_id,
                          yt_album_id=yt_album_id,
@@ -246,30 +258,82 @@ class YouTubePlugin(MetadataSourcePlugin):
                          tracks=tracks,
                          albumtype=type,
                          year=year,
-                         mediums=max(medium_totals.keys()),
+                         mediums=mediums,
                          data_source=self.data_source,
                          cover_art_url=cover_art_url,
                          yt_updated=time.time()
                          )
 
     def _get_track(self, track_data):
-        """Convert a Youtube song object to a TrackInfo object.
-        """
-        yt_track_id = track_data.get('videoId', '')
+        """Convert a Youtube song/search object to a TrackInfo object."""
+        # Normalize fields across different shapes (album track dict, search result, videoDetails)
+        yt_track_id = track_data.get('videoId', '') or track_data.get('videoId', '')
+        title = (track_data.get('title') or '').replace("&quot;", "\"")
+
+        # Artist can be list (search/album) or author (videoDetails)
+        artist_name = ''
+        artists = track_data.get('artists') or []
+        if isinstance(artists, list) and artists:
+            artist_name = artists[0].get('name', '') or ''
+        elif isinstance(artists, dict):
+            artist_name = artists.get('name', '') or ''
+        else:
+            artist_name = track_data.get('author', '') or ''
+
+        # Album can be dict, string, or missing
+        album_obj = track_data.get('album')
+        if isinstance(album_obj, dict):
+            album_name = (album_obj.get('name') or '').replace("&quot;", "\"")
+        elif isinstance(album_obj, str):
+            album_name = album_obj.replace("&quot;", "\"")
+        else:
+            album_name = ''
+
+        # Length can be seconds int, "mm:ss" string, or in videoDetails lengthSeconds
+        length_seconds = 0
+        if isinstance(track_data.get('duration_seconds'), int):
+            length_seconds = track_data.get('duration_seconds') or 0
+        elif track_data.get('duration'):
+            length_seconds = self._parse_duration(track_data.get('duration'))
+        elif track_data.get('lengthSeconds'):
+            try:
+                length_seconds = int(track_data.get('lengthSeconds'))
+            except Exception:
+                length_seconds = 0
+
         views = self.get_yt_views(yt_track_id)
-        # Get track information for YouTube tracks
+
         return TrackInfo(
-            title=track_data.get('title').replace("&quot;", "\""),
+            title=title,
             track_id=yt_track_id,
             yt_track_id=yt_track_id,
-            artist=track_data.get('artists', '')[0].get('name', ''),
-            album=track_data.get('album').replace("&quot;", "\""),
-            yt_artist_id=track_data.get('artists', '')[0].get('id', ''),
-            length=track_data.get('duration_seconds', 0),
+            artist=artist_name,
+            album=album_name,
+            yt_artist_id=(artists[0].get('id', '') if isinstance(artists, list) and artists else ''),
+            length=length_seconds,
             yt_views=views,
             data_source=self.data_source,
             yt_updated=time.time(),
+            medium=1,  # default for YouTube tracks
         )
+
+    def _parse_duration(self, duration_str):
+        """Parse duration string in format 'mm:ss' or 'hh:mm:ss' to seconds."""
+        if not duration_str or not isinstance(duration_str, str):
+            return 0
+        
+        parts = duration_str.split(':')
+        try:
+            if len(parts) == 2:  # mm:ss format
+                minutes, seconds = map(int, parts)
+                return minutes * 60 + seconds
+            elif len(parts) == 3:  # hh:mm:ss format
+                hours, minutes, seconds = map(int, parts)
+                return hours * 3600 + minutes * 60 + seconds
+            else:
+                return 0
+        except ValueError:
+            return 0
 
     def album_for_id(self, album_id):
         """Fetch an album by its YouTube browseID and return an AlbumInfo object
@@ -284,7 +348,7 @@ class YouTubePlugin(MetadataSourcePlugin):
             album_details = self.yt.get_album(album_id)
         except Exception:
             return None
-        return self.get_album_info(album_details, 'album')
+        return self.get_album_info(album_details, album_id)
 
     def track_for_id(self, track_id):
         """Fetches a track by its YouTube ID and returns a TrackInfo object
@@ -383,10 +447,15 @@ class YouTubePlugin(MetadataSourcePlugin):
     def import_youtube_search(self, search, limit):
         """Returns the top N songs from YouTube search."""
         try:
-            songs = self.yt.search(query=search, filter="songs", limit=int(limit))
+            songs = self.yt.search(query=search, filter="songs", limit=int(limit), ignore_spelling=True)
         except Exception as e:
-            self._log.error("Failed to search YouTube for '{0}': {1}", search, str(e))
-            return []
+            self._log.debug("YT search with filter=songs failed: {0}. Falling back to unfiltered search.", str(e))
+            try:
+                mixed = self.yt.search(query=search, limit=int(limit) * 2, ignore_spelling=True)
+                songs = [r for r in mixed if r.get('resultType') == 'song' and r.get('videoId')]
+            except Exception as e2:
+                self._log.error("Failed to search YouTube for '{0}': {1}", search, str(e2))
+                return []
 
         if not songs:
             self._log.warning("No songs found for search query: {0}", search)
