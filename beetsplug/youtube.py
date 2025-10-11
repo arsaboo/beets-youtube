@@ -321,7 +321,7 @@ class YouTubePlugin(MetadataSourcePlugin):
         """Parse duration string in format 'mm:ss' or 'hh:mm:ss' to seconds."""
         if not duration_str or not isinstance(duration_str, str):
             return 0
-        
+
         parts = duration_str.split(':')
         try:
             if len(parts) == 2:  # mm:ss format
