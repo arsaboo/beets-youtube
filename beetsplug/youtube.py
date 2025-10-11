@@ -148,10 +148,17 @@ class YouTubePlugin(MetadataSourcePlugin):
         albums = []
         self._log.debug('Searching Youtube for album: {}', query)
         try:
-            data = self.yt.search(query, filter='albums', limit=5)
+            data = self.yt.search(query, filter='albums', limit=5, ignore_spelling=True)
         except Exception as e:
-            self._log.debug('Invalid Search Error: {}'.format(e))
-            return albums
+            self._log.debug('Album search with filter=albums failed: {0}. Falling back to unfiltered search.', str(e))
+            try:
+                # Fallback to unfiltered search and filter albums manually
+                mixed_data = self.yt.search(query, limit=10, ignore_spelling=True)
+                data = [item for item in mixed_data if item.get('resultType') == 'album']
+                data = data[:5]  # Limit to 5 results
+            except Exception as e2:
+                self._log.debug('Invalid Search Error: {}'.format(e2))
+                return albums
         for album in data:
             self._log.debug('Found album: {} with browseID: {}',
                             album['title'], album['browseId'])
@@ -175,10 +182,17 @@ class YouTubePlugin(MetadataSourcePlugin):
         tracks = []
         self._log.debug('Searching YouTube for track: {}', query)
         try:
-            data = self.yt.search(query, filter='songs', limit=5)
+            data = self.yt.search(query, filter='songs', limit=5, ignore_spelling=True)
         except Exception as e:
-            self._log.debug('Invalid Search Error: {}'.format(e))
-            return tracks
+            self._log.debug('Track search with filter=songs failed: {0}. Falling back to unfiltered search.', str(e))
+            try:
+                # Fallback to unfiltered search and filter songs manually
+                mixed_data = self.yt.search(query, limit=10, ignore_spelling=True)
+                data = [item for item in mixed_data if item.get('resultType') == 'song']
+                data = data[:5]  # Limit to 5 results
+            except Exception as e2:
+                self._log.debug('Invalid Search Error: {}'.format(e2))
+                return tracks
         for track in data:
             video_id = track["videoId"]
             song_details = self.yt.get_song(video_id)
