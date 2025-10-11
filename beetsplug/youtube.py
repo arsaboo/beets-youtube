@@ -64,10 +64,29 @@ class YouTubePlugin(MetadataSourcePlugin):
         # Try to initialize with OAuth first, fall back to no auth
         oauth_path = os.path.join(config.config_dir(), 'oauth.json')
         try:
-            if os.path.exists(oauth_path) and oauth_credentials:
-                self.yt = YTMusic(oauth_path, oauth_credentials=oauth_credentials)
-            elif os.path.exists(oauth_path):
-                self.yt = YTMusic(oauth_path)
+            if os.path.exists(oauth_path):
+                if oauth_credentials:
+                    # Initialize with both oauth file and credentials
+                    self.yt = YTMusic(oauth_path, oauth_credentials=oauth_credentials)
+                else:
+                    # Initialize with oauth file only (this may not work in newer versions)
+                    # Try without explicit credentials first
+                    try:
+                        self.yt = YTMusic(oauth_path)
+                    except Exception:
+                        # If that fails, try to create credentials from config
+                        client_id = self.config['client_id'].get()
+                        client_secret = self.config['client_secret'].get()
+                        if client_id and client_secret:
+                            temp_oauth_credentials = OAuthCredentials(
+                                client_id=client_id,
+                                client_secret=client_secret
+                            )
+                            self.yt = YTMusic(oauth_path, oauth_credentials=temp_oauth_credentials)
+                        else:
+                            # Final fallback - no authentication
+                            self._log.warning('OAuth file exists but no credentials provided, falling back to no auth')
+                            self.yt = YTMusic()
             else:
                 # Fall back to no authentication
                 self.yt = YTMusic()
