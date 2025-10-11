@@ -145,9 +145,12 @@ class YouTubePlugin(MetadataSourcePlugin):
         # Strip medium information from query, Things like "CD1" and "disk 1"
         # can also negate an otherwise positive result.
         query = re.sub(r'(?i)\b(CD|disc)\s*\d+', '', query)
+        # Additional sanitization to remove extra spaces and clean up the query
+        query = ' '.join(query.split()).strip()
         albums = []
         self._log.debug('Searching Youtube for album: {}', query)
         try:
+            # Try filtered search first
             data = self.yt.search(query, filter='albums', limit=5, ignore_spelling=True)
         except Exception as e:
             self._log.debug('Album search with filter=albums failed: {0}. Falling back to unfiltered search.', str(e))
@@ -157,8 +160,14 @@ class YouTubePlugin(MetadataSourcePlugin):
                 data = [item for item in mixed_data if item.get('resultType') == 'album']
                 data = data[:5]  # Limit to 5 results
             except Exception as e2:
-                self._log.debug('Invalid Search Error: {}'.format(e2))
-                return albums
+                self._log.debug('Unfiltered search also failed: {0}. Trying search without ignore_spelling.', str(e2))
+                try:
+                    # Try without ignore_spelling parameter
+                    data = self.yt.search(query, filter='albums', limit=5)
+                    data = [item for item in data if item.get('resultType') == 'album']
+                except Exception as e3:
+                    self._log.debug('All search attempts failed: {}'.format(e3))
+                    return albums
         for album in data:
             self._log.debug('Found album: {} with browseID: {}',
                             album['title'], album['browseId'])
@@ -179,9 +188,12 @@ class YouTubePlugin(MetadataSourcePlugin):
         # Strip medium information from query, Things like "CD1" and "disk 1"
         # can also negate an otherwise positive result.
         query = re.sub(r'(?i)\b(CD|disc)\s*\d+', '', query)
+        # Additional sanitization to remove extra spaces and clean up the query
+        query = ' '.join(query.split()).strip()
         tracks = []
         self._log.debug('Searching YouTube for track: {}', query)
         try:
+            # Try filtered search first
             data = self.yt.search(query, filter='songs', limit=5, ignore_spelling=True)
         except Exception as e:
             self._log.debug('Track search with filter=songs failed: {0}. Falling back to unfiltered search.', str(e))
@@ -191,8 +203,14 @@ class YouTubePlugin(MetadataSourcePlugin):
                 data = [item for item in mixed_data if item.get('resultType') == 'song']
                 data = data[:5]  # Limit to 5 results
             except Exception as e2:
-                self._log.debug('Invalid Search Error: {}'.format(e2))
-                return tracks
+                self._log.debug('Unfiltered search also failed: {0}. Trying search without ignore_spelling.', str(e2))
+                try:
+                    # Try without ignore_spelling parameter
+                    data = self.yt.search(query, filter='songs', limit=5)
+                    data = [item for item in data if item.get('resultType') == 'song']
+                except Exception as e3:
+                    self._log.debug('All search attempts failed: {}'.format(e3))
+                    return tracks
         for track in data:
             video_id = track["videoId"]
             song_details = self.yt.get_song(video_id)
